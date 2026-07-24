@@ -42,6 +42,7 @@ export interface StartOptions {
   cwd?: string;
   ticketId: string;
   title?: string;
+  flow?: string;
   subTickets?: {
     frontend?: string;
     backend?: string;
@@ -54,7 +55,8 @@ export interface StartOptions {
 export function runStart(options: StartOptions): void {
   const cwd = options.cwd ?? process.cwd();
   const config = loadConfig(cwd);
-  const flow = loadFlowDefinition(config.project.flow, cwd);
+  const flowId = options.flow ?? config.project.flow;
+  const flow = loadFlowDefinition(flowId, cwd);
   const ticketId = options.ticketId.toUpperCase();
   const title = options.title ?? ticketId;
   const now = new Date().toISOString();
@@ -69,6 +71,7 @@ export function runStart(options: StartOptions): void {
   // Resume if this ticket already has a change folder + state
   if (existing?.tickets[ticketId] && existsSync(resolve(cwd, "openflow/changes", ticketId))) {
     existing.active_ticket = ticketId;
+    existing.flow = existing.tickets[ticketId].flow ?? existing.flow;
     existing.current_step = existing.tickets[ticketId].current_step ?? existing.current_step;
     if (options.subTickets) {
       existing.tickets[ticketId].sub_tickets = {
@@ -78,7 +81,7 @@ export function runStart(options: StartOptions): void {
     }
     writeState(cwd, existing);
     console.log(
-      `Resumed ${ticketId} at step ${existing.current_step} (${flow.name}).`,
+      `Resumed ${ticketId} at step ${existing.current_step} (${existing.flow}).`,
     );
     return;
   }

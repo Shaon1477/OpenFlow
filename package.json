@@ -16,6 +16,7 @@
     "openflow-rules",
     "openflow-rule-details",
     "openspec-skills",
+    "skills",
     "examples"
   ],
   "license": "MIT",

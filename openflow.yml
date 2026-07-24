@@ -1,6 +1,6 @@
 project:
   name: example
-  flow: v5-workflow
+  flow: v5-workflow  # default only — pick flow per ticket via /openflow-v5-workflow, /openflow-backend-flow, etc.
 
 tracker:
   provider: jira # jira | linear | github
@@ -22,7 +22,7 @@ repos:
 
 branching:
   pattern: "feature/{ticket-id}-{slug}"
-  # User creates branches manually before /openflow approve on Step 1
+  # User creates branches manually before /openflow-approve on Step 1
 
 extensions:
   security: false

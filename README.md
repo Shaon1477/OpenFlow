@@ -2,120 +2,52 @@
 
 Flow-agnostic, multi-repo SDLC orchestration engine.
 
-OpenFlow owns the **workflow**. [aidlc](https://github.com/awslabs/aidlc-workflows) supplies engineering discipline (session resume, code-gen gates, extensions). [OpenSpec](https://github.com/Fission-AI/OpenSpec) supplies spec artifacts (propose → apply → verify → sync → archive). Your AI coding assistant is the execution engine.
+OpenFlow owns the **workflow**. [aidlc](https://github.com/awslabs/aidlc-workflows) supplies engineering discipline. [OpenSpec](https://github.com/Fission-AI/OpenSpec) supplies spec artifacts. Your AI tool (Cursor / Windsurf / Claude) executes via **skills** — same idea as OpenSpec slash skills.
 
-```
-Ticket → context → frontend doc → frontend impl → test cases
-      → backend doc → backend impl → integration → test scripts
-      → jira context → functional context → Done
-```
-
-## Install
+## Install (engine)
 
 ```bash
 cd OpenFlow
-npm install
-npm run build
-npm link   # optional: openflow on PATH
+npm install && npm run build && npm link
 ```
 
-Requires Node.js 20+.
-
-## Quick start
+## Once per project
 
 ```bash
-# In your orchestration workspace (sibling to frontend/backend/context repos)
+cd my-workspace
 openflow init
-# edit openflow.yml — set repos.context (required), frontend, backend, test, tracker
-
-openflow start PROD-5100
-openflow status
-# …AI follows openflow-rules/core.md through each step…
-openflow approve    # after each human gate
-openflow archive PROD-5100
+# edit openflow.yml — repos + tracker (context repo required)
 ```
 
-Or in chat with your AI tool:
+Installs `openflow.yml`, `.cursor/skills/openflow-*`, and `.cursor/rules/openflow.mdc`.
 
-```
-/openflow start PROD-5100
-/openflow approve
-/openflow status
-/openflow archive PROD-5100
-```
+**Do not re-init to change flow.** Init is setup only.
 
-Point the AI at `openflow-rules/core.md` (Cursor: always-apply rule; Claude: CLAUDE.md include; etc.).
+## Day to day (skills)
+
+| Skill | Use when |
+|-------|----------|
+| `/openflow-v5-workflow PROD-5100` | Full FE+BE+context+test |
+| `/openflow-backend-flow PROD-5103` | Backend-only |
+| `/openflow-frontend-flow PROD-5102` | Frontend-only |
+| `/openflow-mobile-flow APP-44` | Mobile |
+| `/openflow-approve` | Advance after you reviewed |
+| `/openflow-status` | Progress |
+| `/openflow-archive PROD-5100` | Done |
+| `/openflow-modify-step …` | Redo from a step forward |
+
+CLI still works under the hood (`openflow start --flow …`, `approve`, `status`, `archive`).
+
+See [implementation docs/USER-EXECUTION-FLOW.md](implementation%20docs/USER-EXECUTION-FLOW.md).
 
 ## Project layout
 
 ```
 OpenFlow/
-├── openflow-rules/core.md           ← master rules (always load)
-├── openflow-rule-details/
-│   ├── common/                      ← from aidlc
-│   ├── inception/                   ← from aidlc (adapted)
-│   ├── construction/                ← from aidlc
-│   ├── extensions/                  ← security / testing / resiliency
-│   ├── tracker/                     ← OpenFlow tracker bridge
-│   ├── flow-engine/                 ← load / execute / gate / recover
-│   └── steps/                       ← step-01 … step-10
-├── openspec-skills/README.md        ← skill → step map
-├── built-in-flows/                  ← v5, mobile, frontend, backend
-├── templates/                       ← context, jira-context, functional-context
-├── schemas/                         ← config, flow, state JSON Schema
-├── src/                             ← CLI
-└── bin/openflow
+├── skills/                          ← Cursor/Windsurf slash skills
+├── openflow-rules/core.md
+├── openflow-rule-details/           ← steps, tracker, flow-engine, aidlc ports
+├── built-in-flows/                  ← v5, backend, frontend, mobile
+├── openspec-skills/README.md        ← which OpenSpec skill fires at which step
+└── src/                             ← thin CLI for state
 ```
-
-## Config (`openflow.yml`)
-
-```yaml
-project:
-  name: my-product
-  flow: v5-workflow          # or mobile-flow | frontend-flow | backend-flow
-
-tracker:
-  provider: jira             # jira | linear | github
-
-repos:
-  frontend: ../teq-frontend-v5
-  backend: ../teq-backend
-  context: ../teq-context    # REQUIRED — every flow has a context repo
-  test: ../teq-test-automation
-
-branching:
-  pattern: "feature/{ticket-id}-{slug}"
-
-extensions:
-  security: false
-  testing: false
-  resiliency: false
-```
-
-## The one constant
-
-Every flow has a **context** repo. Documentation, test cases, and living functional context live there. `openspec-sync-specs` writes back to it at Step 10.
-
-## Human gates
-
-Steps stop for review. Advance only with `/openflow approve` (or `openflow approve`). Impl steps run `openspec-verify-change` (completeness / correctness / coherence) before approval.
-
-## Recovery
-
-| Command | Effect |
-|---|---|
-| `/openflow modify-step …` | Revise step (confirm) + `openspec-update-change` |
-| `/openflow retry-step N` | Resume from checkpoint + `openspec-continue-change` |
-| `/openflow block "…"` | Pause with reason |
-
-## Adapters
-
-Tracker-agnostic ticket schema lives in `openflow-rule-details/tracker/`. Example mappings:
-
-- [examples/adapters/jira.md](examples/adapters/jira.md)
-- [examples/adapters/linear.md](examples/adapters/linear.md)
-- [examples/adapters/github-issues.md](examples/adapters/github-issues.md)
-
-## License
-
-MIT

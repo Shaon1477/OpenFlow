@@ -4,6 +4,8 @@ import {
   existsSync,
   copyFileSync,
   readFileSync,
+  readdirSync,
+  cpSync,
 } from "node:fs";
 import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,18 +21,64 @@ const PACKAGE_ROOT = resolve(
   "..",
 );
 
-export type AiTool = "cursor" | "copilot" | "windsurf" | "unknown";
+export type AiTool = "cursor" | "copilot" | "windsurf" | "claude" | "unknown";
 
 export function detectAiTool(cwd: string): AiTool {
   if (existsSync(resolve(cwd, ".cursor"))) return "cursor";
+  if (existsSync(resolve(cwd, ".windsurf"))) return "windsurf";
+  if (existsSync(resolve(cwd, ".claude")) || existsSync(resolve(cwd, "CLAUDE.md")))
+    return "claude";
   if (existsSync(resolve(cwd, ".github/copilot-instructions.md")))
     return "copilot";
-  if (existsSync(resolve(cwd, ".windsurf"))) return "windsurf";
   return "unknown";
 }
 
 function exampleConfigPath(): string {
   return join(PACKAGE_ROOT, "openflow.yml");
+}
+
+function installSkills(cwd: string, aiTool: AiTool): string[] {
+  const skillsSrc = join(PACKAGE_ROOT, "skills");
+  if (!existsSync(skillsSrc)) return [];
+
+  const installed: string[] = [];
+  const targets: string[] = [];
+
+  // Always install into project .cursor/skills (Cursor / Agent skills)
+  targets.push(resolve(cwd, ".cursor", "skills"));
+  if (aiTool === "windsurf") {
+    targets.push(resolve(cwd, ".windsurf", "skills"));
+  }
+  if (aiTool === "claude") {
+    targets.push(resolve(cwd, ".claude", "skills"));
+  }
+
+  for (const targetRoot of targets) {
+    mkdirSync(targetRoot, { recursive: true });
+    for (const name of readdirSync(skillsSrc)) {
+      const src = join(skillsSrc, name);
+      const dest = join(targetRoot, name);
+      cpSync(src, dest, { recursive: true });
+      installed.push(`${targetRoot}/${name}`);
+    }
+  }
+
+  return installed;
+}
+
+function installCursorRule(cwd: string): void {
+  const core = join(PACKAGE_ROOT, "openflow-rules", "core.md");
+  if (!existsSync(core)) return;
+  const rulesDir = resolve(cwd, ".cursor", "rules");
+  mkdirSync(rulesDir, { recursive: true });
+  const body = `---
+description: OpenFlow SDLC orchestration — always follow when user runs OpenFlow skills
+alwaysApply: true
+---
+
+${readFileSync(core, "utf8")}
+`;
+  writeFileSync(resolve(rulesDir, "openflow.mdc"), body, "utf8");
 }
 
 export interface InitOptions {
@@ -80,14 +128,41 @@ export function runInit(options: InitOptions = {}): void {
     configContent = `${configContent.trimEnd()}\nai_tool: ${aiTool}\n`;
   }
 
+  // Clarify: project.flow is only the default; skills override per ticket
+  if (!configContent.includes("# default flow")) {
+    configContent = configContent.replace(
+      /flow:\s*(\S+)/,
+      "flow: $1  # default only — pick flow per ticket via /v5-workflow, /backend-flow, etc.",
+    );
+  }
+
   writeFileSync(configPath, configContent, "utf8");
 
+  const installed = installSkills(cwd, aiTool);
+  installCursorRule(cwd);
+
   const rulesHint = resolve(openflowDir, "RULES-HINT.md");
-  const coreRules = join(PACKAGE_ROOT, "openflow-rules", "core.md");
-  const hintBody = existsSync(coreRules)
-    ? `# OpenFlow rules\n\nLoad \`openflow-rules/core.md\` in your AI tool (${aiTool}).\n\nCore rules path (engine package): \`${coreRules}\`\n`
-    : `# OpenFlow rules\n\nPoint your AI tool at OpenFlow \`openflow-rules/core.md\` when available (Phase 4).\n\nDetected AI tool: **${aiTool}**\n`;
-  writeFileSync(rulesHint, hintBody, "utf8");
+  writeFileSync(
+    rulesHint,
+    `# OpenFlow — once per project
+
+\`openflow init\` is **once**. Day-to-day use **skills** in Cursor / Windsurf / Claude:
+
+| Skill | When |
+|-------|------|
+| \`/openflow-v5-workflow PROD-5100\` | Full FE+BE+context+test |
+| \`/openflow-backend-flow PROD-5103\` | Backend-only |
+| \`/openflow-frontend-flow PROD-5102\` | Frontend-only |
+| \`/openflow-mobile-flow APP-44\` | Mobile |
+| \`/openflow-approve\` | Advance past human gate |
+| \`/openflow-status\` | Progress |
+| \`/openflow-archive PROD-5100\` | Done |
+| \`/openflow-modify-step …\` | Redo from a step forward |
+
+Edit \`openflow.yml\` for repos + tracker. Do not re-init to change flow.
+`,
+    "utf8",
+  );
 
   const contextTemplate = join(PACKAGE_ROOT, "templates", "context.md");
   if (existsSync(contextTemplate)) {
@@ -101,6 +176,13 @@ export function runInit(options: InitOptions = {}): void {
   console.log(`Created ${DEFAULT_CONFIG_FILENAME}`);
   console.log(`Created ${OPENFLOW_DIR}/ (changes/, RULES-HINT.md)`);
   console.log(`Detected AI tool: ${aiTool}`);
+  if (installed.length) {
+    console.log(`Installed ${installed.length} skill copies under .cursor/skills/ (and tool-specific dirs if any)`);
+  }
+  if (existsSync(resolve(cwd, ".cursor/rules/openflow.mdc"))) {
+    console.log("Installed .cursor/rules/openflow.mdc");
+  }
+  console.log("Day-to-day: /openflow-v5-workflow, /openflow-backend-flow, /openflow-approve, …");
 
   loadConfigFromFile(configPath);
   console.log("Configuration validated.");

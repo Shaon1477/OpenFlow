@@ -37,9 +37,10 @@ program
   .description("Start a ticket: init state and openflow/changes/{ticket}/")
   .argument("<ticket>", "Parent ticket id (e.g. PROD-5100)")
   .option("-t, --title <title>", "Ticket title for branch slug")
+  .option("--flow <id>", "Flow for this ticket (overrides openflow.yml default)")
   .action((ticket, opts) => {
     try {
-      runStart({ ticketId: ticket, title: opts.title });
+      runStart({ ticketId: ticket, title: opts.title, flow: opts.flow });
     } catch (err) {
       console.error(err instanceof Error ? err.message : err);
       process.exit(1);
