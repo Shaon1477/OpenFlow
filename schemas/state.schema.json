@@ -1,0 +1,120 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://openflow.dev/schemas/state.schema.json",
+  "title": "OpenFlow State",
+  "type": "object",
+  "required": ["flow", "current_step", "started_at", "tickets"],
+  "additionalProperties": false,
+  "properties": {
+    "active_ticket": {
+      "type": ["string", "null"],
+      "description": "Parent tracker ticket id currently in progress"
+    },
+    "flow": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Active flow definition id"
+    },
+    "current_step": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10,
+      "description": "Current workflow step (1-10)"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ai_tool": { "type": "string" },
+    "tickets": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/definitions/ticketState" }
+    }
+  },
+  "definitions": {
+    "stepStatus": {
+      "type": "string",
+      "enum": ["pending", "in_progress", "awaiting_approval", "completed", "skipped", "blocked"]
+    },
+    "subTickets": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "frontend": { "type": "string" },
+        "backend": { "type": "string" },
+        "mobile": { "type": "string" },
+        "context": { "type": "string" },
+        "test": { "type": "string" }
+      }
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "security": { "type": "boolean" },
+        "testing": { "type": "boolean" },
+        "resiliency": { "type": "boolean" }
+      }
+    },
+    "branches": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "description": "Feature branch name per repo key"
+      }
+    },
+    "stepRecord": {
+      "type": "object",
+      "required": ["status"],
+      "additionalProperties": true,
+      "properties": {
+        "status": { "$ref": "#/definitions/stepStatus" },
+        "started_at": { "type": "string", "format": "date-time" },
+        "completed_at": { "type": "string", "format": "date-time" },
+        "approved_at": { "type": "string", "format": "date-time" },
+        "skill_used": { "type": "string" },
+        "artifacts": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "ticketState": {
+      "type": "object",
+      "required": ["title", "status", "steps"],
+      "additionalProperties": true,
+      "properties": {
+        "title": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["active", "awaiting_approval", "done", "archived"]
+        },
+        "flow": { "type": "string" },
+        "current_step": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "started_at": { "type": "string", "format": "date-time" },
+        "completed_at": { "type": "string", "format": "date-time" },
+        "context_file": { "type": "string" },
+        "audit_file": { "type": "string" },
+        "sub_tickets": { "$ref": "#/definitions/subTickets" },
+        "extensions": { "$ref": "#/definitions/extensions" },
+        "blockers": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "branches": { "$ref": "#/definitions/branches" },
+        "steps": {
+          "type": "object",
+          "description": "Keys are step ids as strings \"1\" through \"10\"",
+          "additionalProperties": { "$ref": "#/definitions/stepRecord" },
+          "propertyNames": {
+            "pattern": "^([1-9]|10)$"
+          }
+        }
+      }
+    }
+  }
+}

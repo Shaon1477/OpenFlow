@@ -1,0 +1,30 @@
+project:
+  name: example
+  flow: v5-workflow
+
+tracker:
+  provider: jira # jira | linear | github
+  # Jira
+  # site: https://your-org.atlassian.net
+  # project_key: PROD
+  # Linear
+  # team_id: ""
+  # GitHub
+  # owner: your-org
+  # repo: your-repo
+
+repos:
+  frontend: ../teq-frontend-v5
+  backend: ../teq-platform
+  context: ../teq-context-docs # REQUIRED always
+  test: ../teq-test
+  # mobile: ../teq-mobile-app  # for mobile-flow
+
+branching:
+  pattern: "feature/{ticket-id}-{slug}"
+  # User creates branches manually before /openflow approve on Step 1
+
+extensions:
+  security: false
+  testing: false
+  resiliency: false

@@ -1,0 +1,10 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.openflow/
+openflow/state.json
+openflow/changes/
+.DS_Store
+*.log
+.env
+.env.*

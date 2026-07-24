@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://openflow.dev/schemas/openflow.config.schema.json",
+  "title": "OpenFlow Project Configuration",
+  "type": "object",
+  "required": ["project", "tracker", "repos", "branching"],
+  "additionalProperties": false,
+  "properties": {
+    "project": {
+      "type": "object",
+      "required": ["name", "flow"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "flow": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Built-in flow id (e.g. v5-workflow) or path to custom flow YAML"
+        }
+      }
+    },
+    "tracker": {
+      "type": "object",
+      "required": ["provider"],
+      "additionalProperties": true,
+      "properties": {
+        "provider": {
+          "type": "string",
+          "enum": ["jira", "linear", "github"]
+        },
+        "site": { "type": "string" },
+        "project_key": { "type": "string" },
+        "team_id": { "type": "string" },
+        "owner": { "type": "string" },
+        "repo": { "type": "string" }
+      }
+    },
+    "repos": {
+      "type": "object",
+      "required": ["context"],
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      },
+      "properties": {
+        "frontend": { "type": "string" },
+        "backend": { "type": "string" },
+        "mobile": { "type": "string" },
+        "context": { "type": "string" },
+        "test": { "type": "string" }
+      }
+    },
+    "branching": {
+      "type": "object",
+      "required": ["pattern"],
+      "additionalProperties": false,
+      "properties": {
+        "pattern": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Branch name pattern; use {ticket-id} and {slug} placeholders"
+        }
+      }
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "security": { "type": "boolean", "default": false },
+        "testing": { "type": "boolean", "default": false },
+        "resiliency": { "type": "boolean", "default": false }
+      }
+    },
+    "ai_tool": {
+      "type": "string",
+      "description": "Detected or configured AI assistant (cursor, copilot, etc.)"
+    }
+  }
+}
