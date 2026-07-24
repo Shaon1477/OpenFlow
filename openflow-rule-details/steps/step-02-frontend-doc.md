@@ -41,7 +41,7 @@ Produce a complete OpenSpec change in the **frontend repo** for the frontend sub
 | Step-by-step | `../../openspec-skills/openspec-new-change/SKILL.md` | User wants approval after each artifact |
 | Fast-forward | `../../openspec-skills/openspec-ff-change/SKILL.md` | User wants all artifacts in one shot |
 
-Fallback if `openspec-skills/` not linked: `../../../OpenSpec/skills/{skill-name}/SKILL.md`.
+Skills are vendored in-repo under `openspec-skills/` — do not require a sibling OpenSpec checkout.
 
 **ON ENTRY actions:**
 

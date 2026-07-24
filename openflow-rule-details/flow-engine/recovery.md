@@ -158,7 +158,7 @@ Phrases like "yes, restart step 2" or `/openflow approve` on a recovery plan cou
 | `openspec-new-change` | corrupted planning artifacts regenerate |
 | `openspec-verify-change` | before re-gating after recovery impl work |
 
-Skills live under `OpenSpec/skills/` — read `SKILL.md` before invocation.
+Skills live under `openspec-skills/` (vendored) and `skills/openflow-*` — read `SKILL.md` before invocation.
 
 ---
 

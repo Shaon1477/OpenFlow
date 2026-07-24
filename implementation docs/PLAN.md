@@ -1,7 +1,7 @@
 # OpenFlow — Implementation Plan (v4 — Complete Ingredient Map)
 
 > **What it is:** A flow-agnostic, multi-repo SDLC orchestration engine.  
-> **Key principle:** OpenFlow owns the workflow. aidlc and OpenSpec are its proven ingredients — used in full, not reinvented.
+> **Key principle:** OpenFlow owns the workflow **and vendors** aidlc + OpenSpec ingredients in-repo (see `VENDOR.md`). Reference repos can be deleted.
 
 ---
 

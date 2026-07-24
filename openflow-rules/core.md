@@ -123,7 +123,7 @@ Authoritative detail lives in `steps/`. Summary:
 | 9 Jira Context | `steps/step-09-jira-context.md` | propose, apply-change | — |
 | 10 Functional Context | `steps/step-10-functional-context.md` | sync-specs, update-change, archive-change, bulk-archive-change | — |
 
-Skill index: `openspec-skills/README.md`. Skill bodies: sibling `OpenSpec/skills/*/SKILL.md` (or installed OpenSpec skills).
+Skill index: `openspec-skills/README.md`. Skill bodies live **in this repo**: `openspec-skills/*/SKILL.md` (vendored). Flow skills: `skills/openflow-*/SKILL.md`.
 
 ---
 

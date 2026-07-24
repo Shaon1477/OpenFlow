@@ -39,7 +39,7 @@ Load these files **before** any tracker or analysis work:
 
 | Skill | Path | When |
 |-------|------|------|
-| `openspec-explore` | `../../openspec-skills/openspec-explore/SKILL.md` (fallback: `../../../OpenSpec/skills/openspec-explore/SKILL.md`) | After ticket normalization, **before** drafting `context.md` — map codebase, ambiguities, and scope; **not** implementation |
+| `openspec-explore` | `../../openspec-skills/openspec-explore/SKILL.md` | After ticket normalization, **before** drafting `context.md` — map codebase, ambiguities, and scope; **not** implementation |
 
 **ON ENTRY actions:**
 

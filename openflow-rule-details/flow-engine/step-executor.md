@@ -53,7 +53,7 @@ Read and apply every file in `on_entry` plus step-specific entry rules:
 ## Phase 2 — MAIN WORK
 
 1. Execute step detail instructions (PLAN §2 is authoritative for skill choice).
-2. Invoke OpenSpec skills by reading their `SKILL.md` under `OpenSpec/skills/`:
+2. Invoke OpenSpec skills by reading their `SKILL.md` under `openspec-skills/` (vendored in this repo):
    - Exploration: `openspec-explore`
    - Docs: `openspec-propose` | `openspec-new-change` | `openspec-ff-change`
    - Implementation: `openspec-apply-change`

@@ -38,9 +38,6 @@ function exampleConfigPath(): string {
 }
 
 function installSkills(cwd: string, aiTool: AiTool): string[] {
-  const skillsSrc = join(PACKAGE_ROOT, "skills");
-  if (!existsSync(skillsSrc)) return [];
-
   const installed: string[] = [];
   const targets: string[] = [];
 
@@ -53,13 +50,22 @@ function installSkills(cwd: string, aiTool: AiTool): string[] {
     targets.push(resolve(cwd, ".claude", "skills"));
   }
 
+  const skillRoots = [
+    join(PACKAGE_ROOT, "skills"), // openflow-* flow skills
+    join(PACKAGE_ROOT, "openspec-skills"), // vendored openspec-* skills
+  ];
+
   for (const targetRoot of targets) {
     mkdirSync(targetRoot, { recursive: true });
-    for (const name of readdirSync(skillsSrc)) {
-      const src = join(skillsSrc, name);
-      const dest = join(targetRoot, name);
-      cpSync(src, dest, { recursive: true });
-      installed.push(`${targetRoot}/${name}`);
+    for (const skillsSrc of skillRoots) {
+      if (!existsSync(skillsSrc)) continue;
+      for (const name of readdirSync(skillsSrc)) {
+        if (name === "README.md") continue;
+        const src = join(skillsSrc, name);
+        const dest = join(targetRoot, name);
+        cpSync(src, dest, { recursive: true });
+        installed.push(`${targetRoot}/${name}`);
+      }
     }
   }
 

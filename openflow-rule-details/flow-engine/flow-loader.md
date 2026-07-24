@@ -114,7 +114,7 @@ For each step, set `human_gate: true | false` from flow YAML.
 Paths are relative to **OpenFlow engine root** unless prefixed with `openflow-rule-details/` (already engine-relative).
 
 - **Rules**: markdown files AI must read before/during step.
-- **Skills**: OpenSpec skill names (`openspec-propose`, `openspec-apply-change`, …) — load from `OpenSpec/skills/` per engine README.
+- **Skills**: OpenSpec skill names (`openspec-propose`, `openspec-apply-change`, …) — load from `openspec-skills/` (vendored). Flow skills from `skills/openflow-*`.
 
 Produce resolved manifest for current step:
 
