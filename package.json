@@ -1,7 +1,7 @@
 {
   "name": "openflow",
-  "version": "0.1.0",
-  "description": "Flow-agnostic multi-repo SDLC orchestration CLI",
+  "version": "0.2.0",
+  "description": "Workflow orchestration for AI-assisted delivery: composable stages, human gates, project-owned rules, drift detection",
   "type": "module",
   "bin": {
     "openflow": "./bin/openflow"
@@ -15,14 +15,14 @@
     "templates",
     "openflow-rules",
     "openflow-rule-details",
-    "openspec-skills",
-    "openspec-schema",
     "skills",
-    "examples"
+    "examples",
+    "ATTRIBUTION.md"
   ],
   "license": "MIT",
   "scripts": {
     "build": "tsc",
+    "smoke": "node scripts/smoke.mjs",
     "prepublishOnly": "npm run build"
   },
   "engines": {

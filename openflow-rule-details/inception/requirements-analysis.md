@@ -1,190 +1,84 @@
-# Requirements Analysis (Adaptive)
+# Requirements analysis
 
-**Assume the role** of a product owner
+**Applies to** the `analyze` stage. **Assume the role** of a product owner who will
+be held to what is written.
 
-**Adaptive Phase**: Always executes. Detail level adapts to problem complexity.
-
-**See [depth-levels.md](../common/depth-levels.md) for adaptive depth explanation**
-
-## Prerequisites
-- Workspace Detection must be complete
-- Reverse Engineering must be complete (if brownfield)
-
-## Execution Steps
-
-### Step 1: Load Reverse Engineering Context (if available)
-
-**IF brownfield project**:
-- Load `openflow/inception/reverse-engineering/architecture.md`
-- Load `openflow/inception/reverse-engineering/component-inventory.md`
-- Load `openflow/inception/reverse-engineering/technology-stack.md`
-- Use these to understand existing system when analyzing request
-
-### Step 2: Analyze User Request (Intent Analysis)
-
-#### 2.1 Request Clarity
-- **Clear**: Specific, well-defined, actionable
-- **Vague**: General, ambiguous, needs clarification
-- **Incomplete**: Missing key information
-
-#### 2.2 Request Type
-- **New Feature**: Adding new functionality
-- **Bug Fix**: Fixing existing issue
-- **Refactoring**: Improving code structure
-- **Upgrade**: Updating dependencies or frameworks
-- **Migration**: Moving to different technology
-- **Enhancement**: Improving existing feature
-- **New Project**: Starting from scratch
-
-#### 2.3 Initial Scope Estimate
-- **Single File**: Changes to one file
-- **Single Component**: Changes to one component/package
-- **Multiple Components**: Changes across multiple components
-- **System-wide**: Changes affecting entire system
-- **Cross-system**: Changes affecting multiple systems
-
-#### 2.4 Initial Complexity Estimate
-- **Trivial**: Simple, straightforward change
-- **Simple**: Clear implementation path
-- **Moderate**: Some complexity, multiple considerations
-- **Complex**: Significant complexity, many considerations
-
-### Step 3: Determine Requirements Depth
-
-**Based on request analysis, determine depth:**
-
-**Minimal Depth** - Use when:
-- Request is clear and simple
-- No detailed requirements needed
-- Just document the basic understanding
-
-**Standard Depth** - Use when:
-- Request needs clarification
-- Functional and non-functional requirements needed
-- Normal complexity
-
-**Comprehensive Depth** - Use when:
-- Complex project with multiple stakeholders
-- High risk or critical system
-- Detailed requirements with traceability needed
-
-### Step 4: Assess Current Requirements
-
-Analyze whatever the user has provided:
-   - Intent statements or descriptions (already logged in audit.md)
-   - Existing requirements documents (search workspace if mentioned)
-   - Pasted content or file references
-   - Convert any non-markdown documents to markdown format 
-
-### Step 5: Thorough Completeness Analysis
-
-**CRITICAL**: Use comprehensive analysis to evaluate requirements completeness. Default to asking questions when there is ANY ambiguity or missing detail.
-
-**MANDATORY**: Evaluate ALL of these areas and ask questions for ANY that are unclear:
-- **Functional Requirements**: Core features, user interactions, system behaviors
-- **Non-Functional Requirements**: Performance, security, scalability, usability
-- **User Scenarios**: Use cases, user journeys, edge cases, error scenarios
-- **Business Context**: Goals, constraints, success criteria, stakeholder needs
-- **Technical Context**: Integration points, data requirements, system boundaries
-- **Quality Attributes**: Reliability, maintainability, testability, accessibility
-
-**When in doubt, ask questions** - incomplete requirements lead to poor implementations.
-
-### Step 5.1: Extension Opt-In Prompts
-
-**MANDATORY**: Scan all loaded `*.opt-in.md` files (loaded at workflow start from `extensions/` subdirectories) for an `## Opt-In Prompt` section. For each extension that declares one, include that question in the clarifying questions file created in Step 6. Present each opt-in question in the same language as the user's conversation.
-
-After receiving answers:
-1. Record each extension's enablement status in `openflow/state.json` under `## Extension Configuration`:
-
-```markdown
-## Extension Configuration
-| Extension | Enabled | Decided At |
-|---|---|---|
-| [Extension Name] | [Yes/No] | Requirements Analysis |
-```
-
-2. **Deferred Rule Loading**: For each extension the user opted IN, load the full rules file now. The rules file is derived by naming convention: strip `.opt-in.md` from the opt-in filename and append `.md` (e.g., `security-baseline.opt-in.md` → `security-baseline.md`). For extensions the user opted OUT, do NOT load the full rules file.
-
-### Step 6: Generate Clarifying Questions (PROACTIVE APPROACH)
-   - **ALWAYS** create `openflow/inception/requirements/requirement-verification-questions.md` unless requirements are exceptionally clear and complete
-   - Ask questions about ANY missing, unclear, or ambiguous areas
-   - Focus on functional requirements, non-functional requirements, user scenarios, and business context
-   - Request user to fill in all [Answer]: tags directly in the questions document
-   - If presenting multiple-choice options for answers:
-     - Label the options as A, B, C, D etc.
-     - Ensure options are mutually exclusive and don't overlap
-     - ALWAYS include option for custom response: "X) Other (please describe after [Answer]: tag below)"
-   - Wait for user answers in the document
-   - **MANDATORY**: Analyze ALL answers for ambiguities and create follow-up questions if needed
-   - **MANDATORY**: Keep asking questions until ALL ambiguities are resolved OR user explicitly asks to proceed
-
-### ⛔ GATE: Await User Answers
-DO NOT proceed to Step 7 until all questions in requirement-verification-questions.md are answered and validated.
-Present the question file to the user and STOP.
-
-### Step 7: Generate Requirements Document
-   - **PREREQUISITE**: Step 6 gate must be passed — all answers received and analyzed
-   - Create `openflow/inception/requirements/requirements.md`
-   - Include intent analysis summary at the top:
-     - User request
-     - Request type
-     - Scope estimate
-     - Complexity estimate
-   - Include both functional and non-functional requirements
-   - Incorporate user's answers to clarifying questions
-   - Provide brief summary of key requirements
-
-### Step 8: Update State Tracking
-
-Update `openflow/state.json`:
-
-```markdown
-## Stage Progress
-### 🔵 INCEPTION PHASE
-- [x] Workspace Detection
-- [x] Reverse Engineering (if applicable)
-- [x] Requirements Analysis
-```
-
-### Step 9: Log and Proceed
-   - Log approval prompt with timestamp in `openflow/changes/{ticket}/audit.md`
-   - Present completion message in this structure:
-     1. **Completion Announcement** (mandatory): Always start with this:
-
-```markdown
-# 🔍 Requirements Analysis Complete
-```
-
-     2. **AI Summary** (optional): Provide structured bullet-point summary of requirements
-        - Format: "Requirements analysis has identified [project type/complexity]:"
-        - List key functional requirements (bullet points)
-        - List key non-functional requirements (bullet points)
-        - Mention architectural considerations or technical decisions if relevant
-        - DO NOT include workflow instructions ("please review", "let me know", "proceed to next phase", "before we proceed")
-        - Keep factual and content-focused
-     3. **Formatted Workflow Message** (mandatory): Always end with this exact format:
-
-```markdown
-> **📋 <u>**REVIEW REQUIRED:**</u>**  
-> Please examine the requirements document at: `openflow/inception/requirements/requirements.md`
-
-
-
-> **🚀 <u>**WHAT'S NEXT?**</u>**
->
-> **You may:**
->
-> 🔧 **Request Changes** -  Ask for modifications to the requirements if required based on your review 
-> [IF User Stories will be skipped, add this option:]
-> 📝 **Add User Stories** - Choose to Include **User Stories** stage (currently skipped based on project simplicity)  
-> ✅ **Approve & Continue** - Approve requirements and proceed to **[User Stories/Workflow Planning]**
+Output goes into `openflow/changes/{ticket}/context.md`; blocking gaps go into
+`questions.md`. Depth adapts to complexity — see `../common/depth-levels.md`.
 
 ---
-```
 
-**Note**: Include the "Add User Stories" option only when User Stories stage will be skipped. Replace [User Stories/Workflow Planning] with the actual next stage name.
+## 1. Ground yourself in the existing system
 
-   - Wait for explicit user approval before proceeding
-   - Record approval response with timestamp
-   - Update Requirements Analysis stage complete in openflow/state.json
+For brownfield work, before analyzing:
+
+- Read the living documentation in the context repo for the areas involved
+- Read the relevant modules and existing tests in each role's repo
+- Read each role's rule pack for the patterns the team expects
+
+Requirements written without reading the code describe an imaginary system.
+
+## 2. Classify the request
+
+| Dimension | Options |
+|---|---|
+| Clarity | clear · vague · incomplete |
+| Type | new feature · bug fix · refactor · upgrade · migration · enhancement |
+| Scope | single file · single component · multiple components · system-wide · cross-system |
+| Complexity | trivial · simple · moderate · complex |
+
+Record all four in `context.md`. They justify the depth you pick next.
+
+## 3. Choose depth
+
+| Depth | When |
+|---|---|
+| `minimal` | Clear, small, low risk — document the understanding and move |
+| `standard` | Normal work needing clarification and both functional and non-functional requirements |
+| `comprehensive` | Complex, high risk, multiple stakeholders, traceability required |
+
+State the depth and the reason.
+
+## 4. Completeness analysis
+
+Evaluate every area below, and raise a question for anything unclear:
+
+- **Functional**: features, interactions, system behaviour
+- **Non-functional**: performance, security, scalability, usability
+- **Scenarios**: use cases, journeys, edge cases, error paths
+- **Business context**: goals, constraints, success criteria
+- **Technical context**: integration points, data, system boundaries
+- **Quality attributes**: reliability, maintainability, testability, accessibility
+
+When in doubt, ask. Incomplete requirements are the most common cause of a delivery
+that passes review and still does the wrong thing.
+
+## 5. Extension opt-ins
+
+Scan the `extensions/*/**/*.opt-in.md` files for an `## Opt-In Prompt` section and
+include each question in `questions.md`, phrased in the user's language.
+
+After answers are in, record the choices at the analyze gate so they land in state,
+and load the **full** rules file only for extensions that were opted into (drop
+`.opt-in` from the filename). Never load rules for a declined extension, and never
+enable one on the user's behalf.
+
+## 6. Clarifying questions
+
+- Create or append to `openflow/changes/{ticket}/questions.md` unless the work item
+  is genuinely unambiguous.
+- Use `../common/question-format-guide.md`: lettered options, mutually exclusive,
+  always an "Other" option, an `[Answer]:` line per question.
+- **Gate**: stop and wait. Do not write final requirements while blocking questions
+  are unanswered.
+- Analyze the answers for new ambiguity and ask follow-ups until either everything
+  is resolved or the user explicitly accepts the risk (record that acceptance).
+
+## 7. Write it down
+
+In `context.md`: summary, classification, depth and rationale, functional
+requirements, non-functional expectations, acceptance criteria as a checkable list,
+assumptions, decisions, and open questions.
+
+Then present the analyze gate (`../flow-engine/human-gate.md`). Never write progress
+into state by hand — the CLI owns `openflow/state.json`.

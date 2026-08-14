@@ -1,169 +1,102 @@
-# Flow Loader
+# Flow loader
 
-**Purpose**: Load the active workflow definition (steps, gates, repo bindings, skill/rule references), validate it, and expose a resolved execution plan to `step-executor.md` and `openflow/state.json`.
-
-**When to run**: Session start, after `openflow init`, when user switches flow, before executing any step.
-
----
-
-## Config Sources (Precedence)
-
-1. **`openflow.yml`** (workspace root) — names the flow and repos.
-2. **Flow YAML** — resolved by:
-   - `openflow.flow` or `workflow.flow_id` in `openflow.yml`, OR
-   - CLI flag / user override for this session.
-3. **Project override** — `{workspace}/openflow/flows/{name}.yml` if present (wins over built-in).
-4. **Built-in** — `OpenFlow/built-in-flows/{name}.yml` (engine package path).
-
-Resolution order: **project override → built-in → error**.
-
-Example `openflow.yml`:
-
-```yaml
-openflow:
-  flow: v5-workflow
-  engine_path: ../OpenFlow    # optional: local clone of engine repo
-
-repositories:
-  frontend: "../teq-frontend-v5"
-  backend: "../teq-backend-v5"
-  context: "../teq-context"   # required — see PLAN §7
-  test: "../teq-test"
-
-project:
-  issue_tracker: jira
-```
+**Purpose.** Resolve which flow is active and what its stages are. The CLI does
+this; this file explains the contract so an agent can reason about it.
 
 ---
 
-## Load Procedure
-
-### 1. Read `openflow.yml`
-
-- Validate against `schemas/openflow.config.schema.json` when schema is available.
-- Fail **Critical** if `repositories.context` is missing.
-- Record absolute paths for each repo in memory for step bindings.
-
-### 2. Resolve flow file path
+## Resolution order
 
 ```
-flow_id = openflow.yml → openflow.flow (default: v5-workflow)
-candidates = [
-  {workspace}/openflow/flows/{flow_id}.yml,
-  {engine}/built-in-flows/{flow_id}.yml
-]
+--flow <id>                       (per work item, wins)
+  → openflow.yml → project.flow   (project default)
+
+for a given id:
+  .openflow/flows/<id>.yml        (project flow, wins)
+  openflow/flows/<id>.yml
+  built-in-flows/<id>.yml         (shipped)
 ```
 
-### 3. Parse flow YAML
+```bash
+openflow flows          # ids and where each resolves from
+```
 
-Expected structure (conceptual; exact keys validated by schema):
+A project flow with the same id as a built-in **replaces** it. That is the intended
+way to change a flow: copy a built-in, edit it, keep the id.
+
+---
+
+## Flow shape
 
 ```yaml
-id: v5-workflow
-version: 1
-name: "V5 Multi-Repo SDLC"
-description: "10-step default"
-
-repos:
-  frontend: { binding: repositories.frontend }
-  backend: { binding: repositories.backend }
-  context: { binding: repositories.context }
-  test: { binding: repositories.test }
+id: delivery-flow
+name: Full Delivery
+roles: [frontend, backend, context, test]
 
 steps:
-  - id: 1
-    key: read-ticket
-    title: "Read Ticket"
-    detail: openflow-rule-details/steps/step-01-read-ticket.md
+  - key: backend-plan            # stable id used by state, gates, CLI
+    name: Backend implementation doc
+    kind: plan                   # stage protocol (see ../stages/README.md)
+    role: backend                # drives rule packs and sub-item lookup
+    repos: [backend]             # the only repos this stage may write to
+    depends_on: [analyze, frontend-plan]
     human_gate: true
-    on_entry:
-      - openflow-rule-details/inception/workspace-detection.md
-      - openflow-rule-details/common/session-continuity.md
-    skills: []
-    rules:
-      - openflow-rule-details/tracker/tracker-bridge.md
-      - openflow-rule-details/tracker/subtask-collection.md
-  # ... steps 2–10
+    verify: false
+    optional: false
+    rules:                       # engine rule files, relative to rule-details root
+      - construction/functional-design.md
+    rule_packs: [backend]        # defaults to [role]
+    artifacts:                   # defaults from kind + role
+      - "{repo}/{artifacts_dir}/{sub_ticket}"
+    skills: [openflow-run]
 ```
 
-### 4. Validate against schema
+### Validation
 
-- Run JSON Schema validation: `schemas/flow-definition.schema.json`.
-- On validation errors: report line/key, do not execute; suggest fix or fallback flow.
+- `key` is unique and slug-like; `depends_on` must reference existing keys.
+- `kind` must be a known stage kind, or `custom` with a `detail_file`.
+- Any number of stages, in any order, repeating kinds and roles freely.
+- Unknown extra fields are preserved, so projects can annotate their flows.
 
-### 5. Resolve step order
+### Path tokens
 
-- Steps MUST be ordered by `id` or explicit `order` field.
-- Build `step_index[]` for navigation (current, next, previous).
-- Honor `skip_when` / `optional` flags if defined (e.g. backend-only flow skips frontend steps).
-
-### 6. Resolve gates
-
-For each step, set `human_gate: true | false` from flow YAML.
-
-- Gated steps require `/openflow approve` — see `human-gate.md`.
-- Steps 3, 6, 7, 8 also require `openspec-verify-change` before approve (per PLAN §2).
-
-### 7. Resolve repo bindings
-
-- Replace `repositories.*` placeholders with paths from `openflow.yml`.
-- Verify directories exist; warn **High** if missing clone.
-
-### 8. Resolve skill and rule refs
-
-Paths are relative to **OpenFlow engine root** unless prefixed with `openflow-rule-details/` (already engine-relative).
-
-- **Rules**: markdown files AI must read before/during step.
-- **Skills**: OpenSpec skill names (`openspec-propose`, `openspec-apply-change`, …) — load from `openspec-skills/` (vendored). Flow skills from `skills/openflow-*`.
-
-Produce resolved manifest for current step:
-
-```json
-{
-  "flow_id": "v5-workflow",
-  "step": 1,
-  "detail_file": "openflow-rule-details/steps/step-01-read-ticket.md",
-  "on_entry": ["..."],
-  "main_rules": ["..."],
-  "skills": ["openspec-explore"],
-  "human_gate": true,
-  "repos": { "frontend": "/abs/path/..." }
-}
-```
-
-Store `flow_id` and `flow_version` in `openflow/state.json`.
+| Token | Expands to |
+|---|---|
+| `{ticket}` | The work item id |
+| `{sub_ticket}` | The sub-item id for this stage's role (falls back to the work item id) |
+| `{role}` | The stage's role |
+| `{repo}` | The path of the stage's own role repo |
+| `{repo:<role>}` | The path of any configured role's repo |
+| `{artifacts_dir}` | `openflow.yml` → `artifacts.dir` |
+| `{slug}` | Slugified work item title (branch patterns) |
 
 ---
 
-## Built-in Flow Catalog
+## What the loader guarantees
 
-| File | Use when |
-|------|----------|
-| `v5-workflow.yml` | Full 10-step multi-repo (default) |
-| `mobile-flow.yml` | Mobile client + API + context |
-| `frontend-flow.yml` | UI-only changes |
-| `backend-flow.yml` | API-only changes |
-
-User may add custom flows under `openflow/flows/` without modifying the engine.
+1. **Only the current stage is offered.** Ordering comes from the steps array;
+   `optional: true` stages are stepped over when advancing.
+2. **Repo bindings are resolved** from `openflow.yml` → `repos`. A stage cannot
+   write outside its declared roles.
+3. **Rule packs are resolved per role** — configured paths first, then filename
+   conventions. See `../../src/lib/rules.ts` behaviour documented in
+   `../stages/README.md`.
+4. **Extension rules are filtered** by what the work item opted into, so disabled
+   extensions are never loaded.
+5. **Artifacts are known before work starts**, which is what makes fingerprinting
+   and drift detection possible.
 
 ---
 
-## Session Integration
+## Writing a project flow
 
-On load success, append to `openflow/changes/{ticket}/audit.md`:
-
-```markdown
-## Flow loaded
-**Timestamp**: ...
-**Flow**: v5-workflow (version 1)
-**Override**: none | openflow/flows/custom.yml
-**Steps**: 10 (active: 1)
+```bash
+mkdir -p .openflow/flows
+cp "$(npm root -g)/openflow/built-in-flows/delivery-flow.yml" .openflow/flows/delivery-flow.yml
+# edit: rename roles, drop stages, add stages, change gates
+openflow flows
 ```
 
-On load failure, do not mutate `state.json.current_step` except to record `blocked` reason.
-
----
-
-## CLI Alignment (Future)
-
-`openflow start --flow v5-workflow` and `openflow status` use the same loader (`src/lib/flow-loader.ts`). AI agents follow this document when CLI is not invoked.
+Compose your own pipeline by reusing stage kinds — for example
+`analyze → plan(data) → implement(data) → test-automation → sync-context` for a
+data-engineering team, with `roles: [data, context, test]`.

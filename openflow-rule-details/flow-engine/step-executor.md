@@ -1,174 +1,89 @@
-# Step Executor
+# Stage executor
 
-**Purpose**: Run exactly one workflow step end-to-end: load rules, perform work, write outputs, audit, and stop at the human gate. Never skip phases or auto-advance gated steps.
-
-**When to run**: Whenever `openflow/state.json` points at step N and the user is not blocked.
-
-**Related**: `flow-loader.md`, `human-gate.md`, `openflow-rule-details/steps/step-NN-*.md`, PLAN §2 delegation map.
+**Purpose.** Run exactly one stage, end to end, and stop. This is the loop every
+session follows.
 
 ---
 
-## Execution Phases (Strict Order)
-
-Every step follows this pipeline:
+## The loop
 
 ```
-ON ENTRY → MAIN WORK → OUTPUT → audit.md → HUMAN GATE (if gated)
+openflow next --json        →  ON ENTRY   (load protocol + rules + rule packs)
+                            →  MAIN WORK  (follow the stage protocol)
+                            →  OUTPUT     (write only declared artifacts)
+                            →  audit      (record decisions worth keeping)
+                            →  GATE       (stop; human runs openflow approve)
 ```
 
-Do not start MAIN WORK until ON ENTRY rules are applied. Do not advance `current_step` until human gate passes (or step has `human_gate: false`).
+Never merge two stages into one turn. Never advance the cursor yourself — only
+`openflow approve` does that.
 
 ---
 
-## Phase 0 — Bootstrap (Once Per Step Invocation)
+## Phase 0 — Bootstrap
 
-1. Load `openflow.yml` and flow via `flow-loader.md`.
-2. Read `openflow/state.json`:
-   - `ticket.id`, `current_step`, `sub_tickets`, `extensions`, `blocked`, `flow_id`.
-3. If `blocked` is non-null: stop; tell user to resolve blocker or `/openflow approve` after fix.
-4. Load **step detail file** from flow manifest, e.g. `openflow-rule-details/steps/step-03-frontend-impl.md`.
-5. Merge flow YAML `on_entry`, `rules`, `skills` with step detail file lists (union, flow order first).
-
----
+1. `openflow next --json`.
+2. If `blocker` is set: stop and report it. No work while blocked.
+3. If `stale` is non-empty: handle staleness first (`../common/workflow-changes.md`).
+4. Load `step.detail_file` — the stage protocol under `../stages/`.
 
 ## Phase 1 — ON ENTRY
 
-Read and apply every file in `on_entry` plus step-specific entry rules:
+Load, in this order:
 
-- `inception/workspace-detection.md` — state file, brownfield/greenfield.
-- `common/session-continuity.md` — resume messaging.
-- `common/welcome-message.md` — first run only.
-- `common/depth-levels.md` — doc/impl depth (Steps 2, 5).
-- `construction/code-generation.md` — Part 1 plan before code (Steps 3, 6, 7).
-- Extension opt-ins already chosen in Step 1 — load `extensions/**` only if opted in.
+1. The stage protocol.
+2. `engine_rules` from the manifest (process and discipline).
+3. **Every file in `rule_packs`** — the project's own engineering rules for the
+   role. If a role has none, say so once and continue with engine defaults.
+4. The artifacts of every `depends_on` stage.
 
-**Outputs of ON ENTRY** (in memory / short user message):
-
-- Confirmed step number and title.
-- List of skills that will run in MAIN WORK.
-- Any blocking questions → write to `questions.md`, stop until answered.
-
----
+Then state, in one or two lines: the stage, its role and sub-item, the repos in
+scope, and which rule packs you loaded. That sentence is how the developer catches
+a misconfiguration early.
 
 ## Phase 2 — MAIN WORK
 
-1. Execute step detail instructions (PLAN §2 is authoritative for skill choice).
-2. Invoke OpenSpec skills by reading their `SKILL.md` under `openspec-skills/` (vendored in this repo):
-   - Exploration: `openspec-explore`
-   - Docs: `openspec-propose` | `openspec-new-change` | `openspec-ff-change`
-   - Implementation: `openspec-apply-change`
-   - Resume: `openspec-continue-change`
-   - Pre-gate: `openspec-verify-change`
-3. Apply aidlc rules referenced in step detail (requirements, overconfidence, security, etc.).
-4. Use **repo bindings** from flow loader — write only inside the correct repo paths.
-5. For implementation steps: follow **code-generation.md** Part 1 → human approval of plan → Part 2.
-
-**During MAIN WORK**: append incremental notes to `audit.md` for significant actions (file created, skill invoked, test run).
-
----
+- Follow the stage protocol's steps in order.
+- Obey the rule packs for craft decisions; obey the protocol for process decisions.
+- Implementation stages additionally follow `../construction/code-generation.md`:
+  numbered plan, human read, then execute.
+- Blocking ambiguity goes to `openflow/changes/{ticket}/questions.md` with
+  `[Answer]:` lines, and the stage waits.
 
 ## Phase 3 — OUTPUT
 
-Write artifacts defined in step detail + PLAN §2. Typical locations:
+- Write only to paths in `step.artifacts` and repos in `step.repos`.
+- Validate content before writing (`../common/content-validation.md`).
+- Product code goes in the repo's real source tree, never in an artifacts folder.
 
-| Artifact | Path |
-|----------|------|
-| Workflow context | `openflow/changes/{parent_ticket}/context.md` |
-| Questions | `openflow/changes/{parent_ticket}/questions.md` |
-| OpenSpec change | `{repo}/openspec/changes/{sub_ticket_id}/` |
-| Jira context | `{context_repo}/jira-context/{parent}-context.md` |
+## Phase 4 — Audit
 
-Before writing any file: run `common/content-validation.md` (Mermaid, escaping).
+The CLI records gates, drift and adoption automatically. Add a short human note for
+anything a future reader would otherwise have to reverse-engineer: a rejected
+alternative, a constraint discovered late, a deliberate deferral.
 
-Set step status in state — see Phase 4 — but do **not** increment `current_step` until gate cleared.
+## Phase 5 — GATE
 
----
+If `human_gate` is true (the default), present:
 
-## Phase 4 — Update `openflow/state.json`
+- Stage and role
+- Artifacts produced, as paths
+- Key decisions, in one line each
+- Verification result when `verify` is true (completeness / correctness / coherence)
+- Open questions and risks
+- The next action: `openflow approve`
 
-After OUTPUT, update (merge, do not wipe):
-
-```json
-{
-  "flow_id": "v5-workflow",
-  "ticket": { "id": "PROD-5100", "title": "..." },
-  "current_step": 3,
-  "step_status": {
-    "3": "awaiting_approval"
-  },
-  "sub_tickets": { "frontend": "PROD-5102", "...": "..." },
-  "extensions": { "security": true, "testing": false, "resiliency": true },
-  "blocked": null,
-  "last_updated": "2026-07-25T02:30:00Z"
-}
-```
-
-**`step_status` values**:
-
-- `in_progress` — MAIN WORK started
-- `awaiting_approval` — OUTPUT done, human gate pending
-- `completed` — gate passed; safe to move to next step
-- `skipped` — flow declared skip with waiver
-
-When human approves: set step N to `completed`, set `current_step` to N+1 (or next non-skipped), clear `step_status[N]` or mark completed.
+If `human_gate` is false, say what was produced and continue to the next stage in a
+new turn.
 
 ---
 
-## Phase 5 — `audit.md`
+## Hard rules
 
-Path: `openflow/changes/{parent_ticket}/audit.md`
-
-Use PLAN §4 format:
-
-```markdown
-## Step 3 — Implement Frontend
-**Timestamp**: 2026-07-25T02:30:00Z
-**Skill used**: openspec-apply-change
-**Artifacts**: ../teq-frontend-v5/openspec/changes/PROD-5102/tasks.md (all tasks checked)
-**Verification**: openspec-verify-change — completeness OK, correctness OK, coherence OK
-**Human gate**: pending | approved at ...
-```
-
-Every step section includes ISO-8601 timestamps.
-
----
-
-## Phase 6 — HUMAN GATE
-
-If `human_gate: true` for this step → hand off to `human-gate.md`.
-
-- Run `openspec-verify-change` when PLAN requires (Steps 3, 6, 7, 8).
-- Present artifact list and verification summary.
-- **Stop**. Do not load step N+1 detail file until `/openflow approve`.
-
-If `human_gate: false`: log completion, update state to next step, optionally notify user.
-
----
-
-## Step Detail File Contract
-
-Each `openflow-rule-details/steps/step-NN-*.md` MUST define:
-
-- Step goal and inputs (prior step artifacts).
-- ON ENTRY / MAIN / OUTPUT file lists (may duplicate flow YAML for clarity).
-- Expected artifacts and gate criteria.
-
-Executor treats step detail + flow YAML + PLAN §2 as one contract; on conflict, **step detail** wins for artifacts, **flow YAML** for skip/gate flags.
-
----
-
-## Interruptions
-
-If session ends mid-step:
-
-- Leave `step_status` as `in_progress`.
-- Next session: `session-continuity.md` + `recovery.md` + `openspec-continue-change`.
-
----
-
-## Prohibited Behavior
-
-- Auto-increment `current_step` after OUTPUT without approval on gated steps.
-- Execute two steps in one user turn without explicit user request.
-- Ignore missing `context` repo binding.
-- Skip `audit.md` entries for skill invocations or gate transitions.
+1. One stage per turn.
+2. No code before the plan artifacts exist and their gate passed.
+3. No self-approval, no cursor edits, no hand-editing `openflow/state.json`.
+4. No writing outside the declared repos and artifact paths.
+5. No inventing requirements to avoid asking a question.
+6. If artifacts already exist and were authored elsewhere, verify and
+   `openflow adopt` instead of regenerating.

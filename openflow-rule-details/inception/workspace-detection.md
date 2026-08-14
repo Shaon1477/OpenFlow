@@ -1,97 +1,63 @@
-# Workspace Detection
+# Workspace detection
 
-**Purpose**: Determine workspace state and check for existing OpenFlow projects
+**Applies to** the `analyze` stage and any first action in a workspace.
 
-## Step 1: Check for Existing OpenFlow Project
+Establish what kind of workspace this is before touching anything.
 
-Check if `openflow/state.json` exists:
-- **If exists**: Resume from last phase (load context from previous phases)
-- **If not exists**: Continue with new project assessment
+---
 
-## Step 2: Scan Workspace for Existing Code
+## 1. Is OpenFlow set up?
 
-**Determine if workspace has existing code:**
-- Scan workspace for source code files (.java, .py, .js, .ts, .jsx, .tsx, .kt, .kts, .scala, .groovy, .go, .rs, .rb, .php, .c, .h, .cpp, .hpp, .cc, .cs, .fs, etc.)
-- Check for build files (pom.xml, package.json, build.gradle, etc.)
-- Look for project structure indicators
-- Identify workspace root directory (NOT openflow/)
+| Check | If missing |
+|---|---|
+| `openflow.yml` in the workspace root | Not an OpenFlow project. Offer `openflow init`; do not scaffold silently. |
+| `openflow/state.json` | First run. Show `welcome-message.md`. |
+| State exists | Resume. Follow `session-continuity.md`. |
 
-**Record findings:**
-```markdown
-## Workspace State
-- **Existing Code**: [Yes/No]
-- **Programming Languages**: [List if found]
-- **Build System**: [Maven/Gradle/npm/etc. if found]
-- **Project Structure**: [Monolith/Microservices/Library/Empty]
-- **Workspace Root**: [Absolute path]
+## 2. Are the configured repos real?
+
+For each role in `openflow.yml` → `repos`:
+
+- Does the path exist? Is it a git repository?
+- Current branch, and whether the tree is clean.
+- Report per role. A missing path is Critical for stages that use that role, and
+  irrelevant for stages that do not.
+
+## 3. Greenfield or brownfield, per repo
+
+| Signal | Treat as |
+|---|---|
+| No source, no dependency manifest | Greenfield — patterns will be established by this work |
+| Existing source and history | Brownfield — patterns already exist and must be followed |
+
+For brownfield repos, read before planning: the dependency manifest, the scripts,
+the folder layout, one or two representative modules, and the existing tests. The
+role's rule pack tells you what the team expects; the code tells you what is
+actually there. When they disagree, raise it rather than picking one silently.
+
+## 4. Where artifacts will go
+
+Resolved by the engine, not guessed:
+
+```bash
+openflow next --json      # step.artifacts, step.repos
 ```
 
-## Step 3: Determine Next Phase
+Generated artifacts live per repo under `openflow.yml` → `artifacts.dir`
+(default `openflow/changes/{sub-item}/`). Orchestration state and the work item
+context live in the workspace under `openflow/`. Product code lives in the repo's
+normal source tree — never inside an artifacts directory.
 
-**IF workspace is empty (no existing code)**:
-- Set flag: `brownfield = false`
-- Next phase: Requirements Analysis
+## 5. Existing work to adopt
 
-**IF workspace has existing code**:
-- Set flag: `brownfield = true`
-- Check for existing reverse engineering artifacts in `openflow/inception/reverse-engineering/`
-- **IF reverse engineering artifacts exist**:
-    - Check if artifacts are stale (compare artifact timestamps against codebase's last significant modification)
-    - **IF artifacts are current**: Load them, skip to Requirements Analysis
-    - **IF artifacts are stale**: Next phase is Reverse Engineering (rerun to refresh artifacts)
-    - **IF user explicitly requests rerun**: Next phase is Reverse Engineering regardless of staleness
-- **IF no reverse engineering artifacts**: Next phase is Reverse Engineering
+If artifact folders already exist for this work item — written by another agent, or
+by a teammate — read them, verify them against the stage protocol, and use
+`openflow adopt <stage>` rather than regenerating. Regenerating over someone's work
+without asking is destructive.
 
-## Step 4: Create Initial State File
+---
 
-Create `openflow/state.json` (JSON only — validate against `schemas/state.schema.json`). Prefer CLI `openflow start {ticket}` when a ticket is known; otherwise seed workspace-level state:
+## Output
 
-```json
-{
-  "active_ticket": null,
-  "flow": "v5-workflow",
-  "current_step": 1,
-  "started_at": "2026-07-25T02:00:00Z",
-  "tickets": {},
-  "workspace": {
-    "project_type": "greenfield",
-    "existing_code": false,
-    "workspace_root": "/absolute/path",
-    "reverse_engineering_needed": false
-  }
-}
-```
-
-**Code location rules** (document in `context.md` / audit, not as markdown state):
-
-- Application code: workspace / configured repos (NEVER under `openflow/`)
-- Orchestration docs & state: `openflow/` only
-- Per-repo OpenSpec changes: `{repo}/openspec/changes/{sub-ticket}/`
-
-## Step 5: Present Completion Message
-
-**For Brownfield Projects:**
-```markdown
-# 🔍 Workspace Detection Complete
-
-Workspace analysis findings:
-• **Project Type**: Brownfield project
-• [AI-generated summary of workspace findings in bullet points]
-• **Next Step**: Proceeding to **Reverse Engineering** to analyze existing codebase...
-```
-
-**For Greenfield Projects:**
-```markdown
-# 🔍 Workspace Detection Complete
-
-Workspace analysis findings:
-• **Project Type**: Greenfield project
-• **Next Step**: Proceeding to **Requirements Analysis**...
-```
-
-## Step 6: Automatically Proceed
-
-- **No user approval required** - this is informational only
-- Automatically proceed to next phase:
-  - **Brownfield**: Reverse Engineering (if no existing artifacts) or Requirements Analysis (if artifacts exist)
-  - **Greenfield**: Requirements Analysis
+A short report: OpenFlow set up (yes/no), repos and their branch state, greenfield
+or brownfield per repo, artifact locations, and any existing work worth adopting.

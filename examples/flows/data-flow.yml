@@ -1,0 +1,90 @@
+# Example project flow — a team that has no frontend at all.
+#
+# Install:  cp examples/flows/data-flow.yml <project>/.openflow/flows/
+# Use:      openflow start DATA-42 --flow data-flow
+#
+# Roles here (`data`, `context`, `test`) are invented by the project; they only
+# need to exist in openflow.yml → repos. The stage kinds are the engine's.
+id: data-flow
+name: Data Pipeline Delivery
+description: Analyze → plan → implement → validate → document, single-role.
+version: "1.0"
+roles: [data, context, test]
+
+steps:
+  - key: analyze
+    name: Analyze request
+    kind: analyze
+    repos: [data, context, test]
+    rule_packs: [data, context, test]
+    human_gate: true
+    artifacts:
+      - openflow/changes/{ticket}/context.md
+    skills: [openflow-run]
+    rules:
+      - common/session-continuity.md
+      - common/overconfidence-prevention.md
+      - common/question-format-guide.md
+      - inception/workspace-detection.md
+      - inception/requirements-analysis.md
+      - intake/work-item-sources.md
+      - intake/work-item-schema.md
+
+  - key: pipeline-plan
+    name: Pipeline design doc
+    kind: plan
+    role: data
+    repos: [data]
+    depends_on: [analyze]
+    human_gate: true
+    skills: [openflow-run]
+    rules:
+      - construction/functional-design.md
+      - construction/nfr-requirements.md
+      - construction/infrastructure-design.md
+
+  - key: pipeline-build
+    name: Implement pipeline
+    kind: implement
+    role: data
+    repos: [data]
+    depends_on: [pipeline-plan]
+    human_gate: true
+    verify: true
+    skills: [openflow-run]
+    rules:
+      - construction/code-generation.md
+
+  # Data quality expectations are the "test cases" of a pipeline.
+  - key: quality-checks
+    name: Data quality expectations
+    kind: test-cases
+    role: context
+    repos: [context]
+    depends_on: [analyze, pipeline-plan]
+    human_gate: true
+    skills: [openflow-run]
+    rules:
+      - inception/requirements-analysis.md
+
+  - key: quality-automation
+    name: Automate quality checks
+    kind: test-automation
+    role: test
+    repos: [test]
+    depends_on: [quality-checks, pipeline-build]
+    human_gate: true
+    verify: true
+    skills: [openflow-run]
+    rules:
+      - construction/build-and-test.md
+
+  - key: sync-context
+    name: Update data catalogue
+    kind: sync-context
+    role: context
+    repos: [context]
+    depends_on: [pipeline-build, quality-automation]
+    human_gate: true
+    skills: [openflow-run, openflow-archive]
+    rules: []

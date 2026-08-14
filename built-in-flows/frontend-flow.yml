@@ -1,126 +1,97 @@
 id: frontend-flow
-name: Frontend-Only Workflow
-description: Frontend-focused subset — skips backend implementation and integration (optional notes only).
-version: "1.0"
-repos:
-  - frontend
-  - context
-  - test
+name: Frontend Delivery
+description: Single-role UI delivery that still ends with living context updated.
+version: "2.0"
+roles: [frontend, context, test]
+
 steps:
-  - id: 1
-    name: Read Ticket
-    detail_file: openflow-rule-details/steps/step-01-read-ticket.md
+  - key: analyze
+    name: Analyze work item
+    kind: analyze
     repos: [frontend, context, test]
+    rule_packs: [frontend, context, test]
     human_gate: true
-    skills:
-      - openspec-explore
+    artifacts:
+      - openflow/changes/{ticket}/context.md
+    skills: [openflow-run]
     rules:
-      - openflow-rule-details/inception/workspace-detection.md
-      - openflow-rule-details/common/session-continuity.md
-      - openflow-rule-details/common/welcome-message.md
-      - openflow-rule-details/tracker/tracker-bridge.md
-      - openflow-rule-details/tracker/subtask-collection.md
-      - openflow-rule-details/inception/requirements-analysis.md
-      - openflow-rule-details/common/overconfidence-prevention.md
-      - openflow-rule-details/inception/workflow-planning.md
-      - openflow-rule-details/common/question-format-guide.md
+      - common/session-continuity.md
+      - common/depth-levels.md
+      - common/overconfidence-prevention.md
+      - common/question-format-guide.md
+      - inception/workspace-detection.md
+      - inception/requirements-analysis.md
+      - inception/workflow-planning.md
+      - intake/work-item-sources.md
+      - intake/work-item-schema.md
+      - intake/sub-items.md
 
-  - id: 2
-    name: Frontend Implementation Doc
-    detail_file: openflow-rule-details/steps/step-02-frontend-doc.md
+  - key: frontend-plan
+    name: Frontend implementation doc
+    kind: plan
+    role: frontend
     repos: [frontend]
+    depends_on: [analyze]
     human_gate: true
-    skills:
-      - openspec-propose
-      - openspec-new-change
-      - openspec-ff-change
+    skills: [openflow-run]
     rules:
-      - openflow-rule-details/common/depth-levels.md
-      - openflow-rule-details/construction/functional-design.md
+      - common/depth-levels.md
+      - construction/functional-design.md
 
-  - id: 3
-    name: Implement Frontend
-    detail_file: openflow-rule-details/steps/step-03-frontend-impl.md
+  - key: frontend-build
+    name: Implement frontend
+    kind: implement
+    role: frontend
     repos: [frontend]
+    depends_on: [frontend-plan]
     human_gate: true
-    skills:
-      - openspec-apply-change
-      - openspec-verify-change
+    verify: true
+    skills: [openflow-run]
     rules:
-      - openflow-rule-details/construction/code-generation.md
-      - openflow-rule-details/extensions/security/baseline/security-baseline.md
+      - construction/code-generation.md
+      - extensions/security/baseline/security-baseline.md
 
-  - id: 4
-    name: Write Test Cases
-    detail_file: openflow-rule-details/steps/step-04-test-cases.md
+  - key: test-cases
+    name: Write test cases
+    kind: test-cases
+    role: context
     repos: [context]
+    depends_on: [analyze, frontend-plan]
     human_gate: true
-    skills:
-      - openspec-propose
+    skills: [openflow-run]
     rules:
-      - openflow-rule-details/inception/requirements-analysis.md
-      - openflow-rule-details/common/overconfidence-prevention.md
+      - inception/requirements-analysis.md
+      - common/overconfidence-prevention.md
 
-  - id: 5
-    name: Backend Implementation Doc
-    detail_file: openflow-rule-details/steps/step-05-backend-doc.md
-    repos: []
-    optional: true
-    human_gate: false
-    skills: []
-    rules: []
-    note: Skipped in frontend-only flow unless backend contract work is required.
-
-  - id: 6
-    name: Implement Backend
-    detail_file: openflow-rule-details/steps/step-06-backend-impl.md
-    repos: []
-    optional: true
-    human_gate: false
-    skills: []
-    rules: []
-    note: Skipped in frontend-only flow.
-
-  - id: 7
-    name: Backend ↔ Frontend Integration
-    detail_file: openflow-rule-details/steps/step-07-integration.md
-    repos: []
-    optional: true
-    human_gate: false
-    skills: []
-    rules: []
-    note: Optional — enable only when wiring to a live backend API.
-
-  - id: 8
-    name: Write Test Scripts
-    detail_file: openflow-rule-details/steps/step-08-test-scripts.md
+  - key: test-automation
+    name: Automate tests
+    kind: test-automation
+    role: test
     repos: [test]
+    depends_on: [test-cases, frontend-build]
+    optional: true
     human_gate: true
-    skills:
-      - openspec-propose
-      - openspec-apply-change
+    verify: true
+    skills: [openflow-run]
     rules:
-      - openflow-rule-details/construction/build-and-test.md
-      - openflow-rule-details/extensions/testing/property-based/property-based-testing.md
+      - construction/build-and-test.md
 
-  - id: 9
-    name: Write Jira Context Doc
-    detail_file: openflow-rule-details/steps/step-09-jira-context.md
+  - key: handoff
+    name: Handoff document
+    kind: handoff
+    role: context
     repos: [context]
+    depends_on: [frontend-build, test-cases]
     human_gate: true
-    skills:
-      - openspec-propose
-      - openspec-apply-change
+    skills: [openflow-run]
     rules: []
 
-  - id: 10
-    name: Update Functional Context
-    detail_file: openflow-rule-details/steps/step-10-functional-context.md
+  - key: sync-context
+    name: Update living context
+    kind: sync-context
+    role: context
     repos: [context]
+    depends_on: [handoff]
     human_gate: true
-    skills:
-      - openspec-sync-specs
-      - openspec-update-change
-      - openspec-archive-change
-      - openspec-bulk-archive-change
+    skills: [openflow-run, openflow-archive]
     rules: []

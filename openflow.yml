@@ -1,30 +1,78 @@
+version: 2
+
 project:
   name: example
-  flow: v5-workflow  # default only — pick flow per ticket via /openflow-v5-workflow, /openflow-backend-flow, etc.
+  flow: delivery-flow # default only — override per work item with --flow
 
-tracker:
-  provider: jira # jira | linear | github
-  # Jira
-  # site: https://your-org.atlassian.net
-  # project_key: PROD
-  # Linear
-  # team_id: ""
-  # GitHub
-  # owner: your-org
-  # repo: your-repo
+# Where work items come from.
+# jira | linear | github | mcp | file | manual | none
+# Only `file` is read by the CLI; the others are executed by your agent through
+# whatever MCP or CLI you already have.
+intake:
+  provider: jira
+  # path: tickets/{ticket}.md          # provider: file
+  # server: my-tracker-mcp             # provider: mcp
+  # instructions: "Fetch the item, its epic, and its subtasks"
 
+# Repo roles. Rename, add or remove freely — the engine has no fixed roles.
 repos:
-  frontend: ../teq-frontend-v5
-  backend: ../teq-platform
-  context: ../teq-context-docs # REQUIRED always
-  test: ../teq-test
-  # mobile: ../teq-mobile-app  # for mobile-flow
+  frontend: ../web
+  backend: ../api
+  context: ../context-docs
+  test: ../e2e
+  # mobile: ../mobile-app
+  # data: ../pipelines
+
+# Role whose repo holds the living documentation the sync-context stage updates.
+context_role: context
 
 branching:
-  pattern: "feature/{ticket-id}-{slug}"
-  # User creates branches manually before /openflow-approve on Step 1
+  pattern: "feature/{ticket}-{slug}"
 
+artifacts:
+  dir: openflow/changes # per-repo folder for proposal/specs/design/tasks
+
+# Your engineering rules, per role. OpenFlow maintains the flow; these decide how
+# the code is actually written. Omit a role to fall back to convention discovery
+# (.openflow/rules/<role>.md, <repo>/<role>.md, <repo>/AGENTS.md, ...).
+rules:
+  discover: true
+  packs:
+    frontend:
+      - .openflow/rules/frontend.md
+      # - ../web/docs/conventions/        # a directory of markdown
+      # - skill:our-design-system         # run one of your own skills
+    backend:
+      - ../api/AGENTS.md
+  # conventions:                          # override the discovery list entirely
+  #   - .openflow/rules/{role}.md
+  #   - "{repo}/CONVENTIONS.md"
+
+# Opt-in engineering extensions. Any name your rules define; the three below ship
+# with the engine under openflow-rule-details/extensions/.
 extensions:
   security: false
   testing: false
   resiliency: false
+
+# Executable Definition of Done, checked by `openflow check` and enforced by
+# `openflow archive`. Leave empty to use flow defaults: every stage approved,
+# living context docs present, and no unresolved drift.
+dod: []
+# dod:
+#   - id: context-docs
+#     description: Living context updated for this delivery
+#     type: file_exists
+#     path: "{repo:context}/{artifacts_dir}/{ticket}"
+#   - id: backend-tasks
+#     description: Backend tasks all checked off
+#     type: tasks_complete
+#     path: "{repo:backend}/{artifacts_dir}/{ticket}/tasks.md"
+#   - id: no-drift
+#     description: Nothing stale
+#     type: no_drift
+#   - id: e2e
+#     description: End-to-end suite passes
+#     type: command
+#     run: "npm --prefix ../e2e test"
+#     optional: true

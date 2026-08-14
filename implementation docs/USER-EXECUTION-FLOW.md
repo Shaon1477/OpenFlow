@@ -1,6 +1,6 @@
-# V5 User Execution Flow
+# User execution flow
 
-CLI owns **state**. Skills in Cursor / Windsurf / Claude own **which flow** and day-to-day work — same pattern as OpenSpec / aidlc.
+What a developer actually does, start to finish. Longer install and platform setup: [../README.md](../README.md). Design: [HOW-IT-WORKS.md](HOW-IT-WORKS.md).
 
 ---
 
@@ -8,75 +8,141 @@ CLI owns **state**. Skills in Cursor / Windsurf / Claude own **which flow** and 
 
 ```bash
 openflow init
-# edit openflow.yml → repos + tracker
 ```
 
-Installs:
+Then edit `openflow.yml`:
 
-- `openflow.yml`
-- `.cursor/skills/openflow-*` (slash skills)
-- `.cursor/rules/openflow.mdc` (always-on rules)
+```yaml
+project:
+  flow: delivery-flow
+intake:
+  provider: jira          # or github | linear | mcp | file | manual | none
+repos:
+  frontend: ../web
+  backend: ../api
+  context: ../context-docs
+  test: ../e2e
+rules:
+  packs:
+    frontend: [.openflow/rules/frontend.md]
+    backend:  [../api/AGENTS.md]
+```
 
-**Do not** run `init` again to pick backend vs v5. Init is setup only.
+Check what the engine sees:
+
+```bash
+openflow flows
+openflow rules
+```
+
+Do not re-run `init` to change flow — flow is chosen per work item.
 
 ---
 
-## Day to day (skills — like OpenSpec)
+## Per work item
 
-| You type in Cursor | Meaning |
-|--------------------|---------|
-| `/openflow-v5-workflow PROD-5100` | Full module (FE+BE+context+test) |
-| `/openflow-backend-flow PROD-5103` | Backend-only ticket |
-| `/openflow-frontend-flow PROD-5102` | Frontend-only |
-| `/openflow-mobile-flow APP-44` | Mobile |
-| `/openflow-approve` | Next step after you reviewed |
-| `/openflow-status` | Where am I? |
-| `/openflow-archive PROD-5100` | Close ticket |
-| `/openflow-modify-step frontend -ticket PROD-5102` | Redo from that step forward |
+```bash
+openflow start PROD-5100 --title "Shift assignment" \
+  --sub frontend=PROD-5102 --sub backend=PROD-5103 --sub context=PROD-5101 --sub test=PROD-5104
+```
 
-`openflow.yml` → `project.flow` is only a **default**. The skill’s `--flow` wins for that ticket.
+Then the loop, once per stage:
+
+```bash
+openflow next        # or /openflow-run in your IDE
+# agent works this stage only, then stops at the gate
+openflow approve     # you approve
+```
+
+In Cursor / Claude / Windsurf the same loop is `/openflow-start` → `/openflow-run` →
+`/openflow-approve`.
+
+### Where you are, at any time
+
+```bash
+openflow status
+```
+
+```
+── PROD-5100: Shift assignment [active] — flow delivery-flow ──
+  ✓ analyze            Analyze work item
+  ✓ frontend-plan      Frontend implementation doc
+  ▸ frontend-build     Implement frontend   ← current
+  □ test-cases         Write test cases
+  □ backend-plan       Backend implementation doc
+  ...
+```
 
 ---
 
-## Example: full V5 parent ticket
+## When something changes
 
-```
-/openflow-v5-workflow PROD-5100
+### You edited code or a document by hand
+
+```bash
+openflow drift
 ```
 
-AI: reads Jira → context.md → gate  
-You: create branches → `/openflow-approve`  
-… Steps 2–10 …  
-You: `/openflow-approve` each gate → `/openflow-archive PROD-5100`
+Dependent stages are marked stale. `/openflow-revisit` walks them, then:
+
+```bash
+openflow approve --step integrate -m "re-checked after contract change"
+```
+
+### The backend contract changed after the frontend was planned
+
+Nothing to announce. The next `openflow next` reports the integration stage as
+stale, with the upstream stage named, and the integrate protocol starts with a
+contract diff.
+
+### Requirements changed
+
+Revisit `analyze`; everything downstream goes stale and gets re-checked in order.
+
+### You are blocked
+
+```bash
+openflow block "waiting on the auth scope from platform"
+openflow block --clear
+```
+
+Blocked work items cannot be approved.
 
 ---
 
-## Example: backend-only issue
+## Work that already exists
 
-Same project. **No re-init.**
+Docs written by another agent, or specs already in the repo:
 
+```bash
+openflow adopt frontend-plan --path ../web/docs/PROD-5102/ --note "written elsewhere"
 ```
-/openflow-backend-flow PROD-5103
-```
 
-AI skips FE steps; runs backend + context (+ test if configured).  
-You: `/openflow-approve` between steps.
+The agent verifies them against the stage protocol first, and they are fingerprinted
+so drift detection still applies.
 
 ---
 
-## Your 10 steps ↔ skills
+## Closing out
 
-| Your step | When (v5-workflow) |
-|-----------|--------------------|
-| 1 Receive Jira | After `/openflow-v5-workflow` |
-| 2 FE impl doc | After approve step 1 |
-| 3 Implement FE | After approve step 2 |
-| 4 Test cases | After approve step 3 |
-| 5 BE impl doc | After approve step 4 |
-| 6 Implement BE | After approve step 5 |
-| 7 Integrate | After approve step 6 |
-| 8 Test scripts | After approve step 7 |
-| 9 Jira context | After approve step 8 |
-| 10 Functional context | After approve step 9 → you verify → archive |
+```bash
+openflow check
+openflow archive PROD-5100
+```
 
-Human verifies; no automated DoD.
+`check` runs the Definition of Done: every stage approved, living context docs
+present, nothing stale, plus any project checks. `archive` refuses to close a work
+item that fails. `--force` exists and is recorded in the audit trail.
+
+Moving the work item to Done in your tracker stays your action.
+
+---
+
+## Rules the flow enforces on the agent
+
+1. One stage per turn; no jumping ahead.
+2. No code before its plan is approved.
+3. It never approves itself.
+4. Ambiguity goes into `questions.md` and the stage waits.
+5. It writes only inside the stage's declared repos and artifact paths.
+6. `sync-context` cannot be skipped to finish faster.

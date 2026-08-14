@@ -1,95 +1,48 @@
-# NFR Design
+# Designing for non-functional requirements
 
-## Prerequisites
-- NFR Requirements must be complete for the unit
-- NFR requirements artifacts must be available
-- Execution plan must indicate NFR Design stage should execute
+**Applies to** `plan` stages, after `nfr-requirements.md` is answered.
 
-## Overview
-Incorporate NFR requirements into unit design using patterns and logical components.
-
-## Steps to Execute
-
-### Step 1: Analyze NFR Requirements
-- Read NFR requirements from `aidlc-docs/construction/{unit-name}/nfr-requirements/`
-- Understand scalability, performance, availability, security needs
-
-### Step 2: Create NFR Design Plan
-- Generate plan with checkboxes [] for NFR design
-- Focus on design patterns and logical components
-- Each step should have a checkbox []
-
-### Step 3: Generate Context-Appropriate Questions
-**DIRECTIVE**: Thoroughly analyze the NFR requirements to identify ALL areas where clarification would improve NFR design quality. Be proactive in asking questions to ensure comprehensive non-functional design coverage.
-
-**CRITICAL**: Default to asking questions when there is ANY ambiguity or missing detail that could affect NFR design quality. It's better to ask too many questions than to make incorrect assumptions about non-functional patterns.
-
-**MANDATORY**: Evaluate ALL of the following categories by asking targeted questions about each. For each category, determine applicability based on evidence from the NFR requirements -- do not skip categories without explicit justification:
-
-- EMBED questions using [Answer]: tag format
-- Focus on ANY ambiguities, missing information, or areas needing clarification
-- Generate questions wherever user input would improve pattern and component decisions
-- **When in doubt, ask the question** - overconfidence leads to poor non-functional designs
-
-**Question categories to evaluate** (consider ALL categories):
-- **Resilience Patterns** - Ask about fault tolerance approach, retry strategies, and failure recovery expectations
-- **Scalability Patterns** - Ask about scaling mechanisms, load boundaries, and growth projections
-- **Performance Patterns** - Ask about optimization strategy, latency targets, and throughput requirements
-- **Security Patterns** - Ask about security implementation approach, threat model, and compliance constraints
-- **Logical Components** - Ask about infrastructure components (queues, caches, circuit breakers, etc.) and their integration patterns
-
-### Step 4: Store Plan
-- Save as `aidlc-docs/construction/plans/{unit-name}-nfr-design-plan.md`
-- Include all [Answer]: tags for user input
-
-### Step 5: Collect and Analyze Answers
-- Wait for user to complete all [Answer]: tags
-- Review for vague or ambiguous responses
-- Add follow-up questions if needed
-
-### Step 6: Generate NFR Design Artifacts
-- Create `aidlc-docs/construction/{unit-name}/nfr-design/nfr-design-patterns.md`
-- Create `aidlc-docs/construction/{unit-name}/nfr-design/logical-components.md`
-
-### Step 7: Present Completion Message
-- Present completion message in this structure:
-     1. **Completion Announcement** (mandatory): Always start with this:
-
-```markdown
-# 🎨 NFR Design Complete - [unit-name]
-```
-
-     2. **AI Summary** (optional): Provide structured bullet-point summary of NFR design
-        - Format: "NFR design has incorporated [description]:"
-        - List key design patterns implemented (bullet points)
-        - List logical components and infrastructure elements
-        - Mention resilience, scalability, and performance patterns applied
-        - DO NOT include workflow instructions ("please review", "let me know", "proceed to next phase", "before we proceed")
-        - Keep factual and content-focused
-     3. **Formatted Workflow Message** (mandatory): Always end with this exact format:
-
-```markdown
-> **📋 <u>**REVIEW REQUIRED:**</u>**  
-> Please examine the NFR design at: `aidlc-docs/construction/[unit-name]/nfr-design/`
-
-
-
-> **🚀 <u>**WHAT'S NEXT?**</u>**
->
-> **You may:**
->
-> 🔧 **Request Changes** - Ask for modifications to the NFR design based on your review  
-> ✅ **Continue to Next Stage** - Approve NFR design and proceed to **[next-stage-name]**
+Turn each recorded requirement into a decision written into `design.md`. Prefer the
+pattern the codebase already uses; a new mechanism needs a stated reason.
 
 ---
-```
 
-### Step 8: Wait for Explicit Approval
-- Do not proceed until the user explicitly approves the NFR design
-- Approval must be clear and unambiguous
-- If user requests changes, update the design and repeat the approval process
+## Pattern selection
 
-### Step 9: Record Approval and Update Progress
-- Log approval in audit.md with timestamp
-- Record the user's approval response with timestamp
-- Mark NFR Design stage complete in aidlc-state.md
+| Requirement | Typical mechanisms | Record in design |
+|---|---|---|
+| Latency | Caching, indexing, pagination, projection, precomputation | What is cached, where, invalidated by what |
+| Throughput | Batching, queueing, background jobs, connection pooling | Which work moves off the request path |
+| Availability | Timeouts, retries with backoff, circuit breakers, fallbacks | Per dependency, with values |
+| Consistency | Transactions, idempotency keys, optimistic locking, outbox | Which boundary is transactional |
+| Security | Authn/authz checks, input validation, encryption, redaction | Where each check happens |
+| Observability | Structured logs, metrics, traces, correlation ids | What is emitted at each boundary |
+
+## Rules
+
+1. **Values, not adjectives.** "Fast" is not a design. `timeout 2s, 2 retries,
+   200ms backoff` is.
+2. **Every dependency gets a failure policy.** Timeout, retry rule, and what the
+   caller sees when it still fails.
+3. **No silent degradation.** If a fallback serves stale or partial data, the user
+   or the log must be able to tell.
+4. **Validate at the boundary you own.** Do not rely on the caller having validated.
+5. **Cache decisions include invalidation.** A cache without a written invalidation
+   rule is a bug scheduled for later.
+6. **Keep it proportional.** Do not add circuit breakers and queues to a change
+   that has neither the volume nor the failure surface to need them; record that
+   choice too.
+
+## Components
+
+List the logical components this design adds or changes, and for each: its single
+responsibility, its inputs and outputs, and the failure modes it must handle. This
+list should map one-to-one onto the structure table in `design.md`.
+
+---
+
+## Output
+
+`design.md` → `## Non-functional decisions` with concrete values, plus rows in the
+structure table for any new component. Spec scenarios cover the observable parts
+(error responses, limits, permission failures).

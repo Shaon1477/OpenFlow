@@ -16,7 +16,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      - name: Smoke CLI
-        run: |
-          node dist/index.js --help
-          node dist/index.js init --help || true
+      - name: List built-in flows
+        run: node dist/index.js flows
+      - name: End-to-end smoke
+        run: npm run smoke

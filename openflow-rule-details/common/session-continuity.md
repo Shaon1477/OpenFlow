@@ -1,53 +1,46 @@
-# Session Continuity Templates
+# Session continuity
 
-## Welcome Back Prompt Template
-When a user returns to continue work on an existing AI-DLC project, present this prompt:
+**Applies to** the start of every session, in every stage.
 
-```markdown
-**Welcome back! I can see you have an existing AI-DLC project in progress.**
+A new chat is not a new delivery. State lives in `openflow/state.json`, not in the
+conversation.
 
-Based on your aidlc-state.md, here's your current status:
-- **Project**: [project-name]
-- **Current Phase**: [INCEPTION/CONSTRUCTION/OPERATIONS]
-- **Current Stage**: [Stage Name]
-- **Last Completed**: [Last completed step]
-- **Next Step**: [Next step to work on]
+---
 
-**What would you like to work on today?**
+## Protocol
 
-A) Continue where you left off ([Next step description])
+1. **Ask the engine, not your memory:**
+   ```bash
+   openflow next --json
+   ```
+2. **Load the current stage's inputs**: `openflow/changes/{ticket}/context.md`, the
+   artifacts of every `depends_on` stage, and `questions.md` if it exists.
+3. **Check for stale work** in the manifest's `stale` field before doing anything
+   new. Resolving stale stages comes first; see `../stages/README.md`.
+4. **Tell the developer where they are** in one short block:
 
-B) Review a previous stage ([Show available stages])
+   ```
+   Ticket PROD-5100 — flow delivery-flow
+   Done:    analyze, frontend-plan
+   Current: frontend-build (implement, role frontend) — awaiting your review
+   Stale:   none
+   Next:    finish tasks 1.3–1.5, then /openflow-approve
+   ```
+5. **Resume; do not restart.** Re-running a completed stage discards approved work.
+   If a stage genuinely needs redoing, use the revisit path in
+   `workflow-changes.md` and confirm the loss first.
 
-[Answer]: 
-```
+---
 
-## MANDATORY: Session Continuity Instructions
-1. **Always read aidlc-state.md first** when detecting existing project
-2. **Parse current status** from the workflow file to populate the prompt
-3. **MANDATORY: Load Previous Stage Artifacts** - Before resuming any stage, automatically read all relevant artifacts from previous stages:
-   - **Reverse Engineering**: Read architecture.md, code-structure.md, api-documentation.md
-   - **Requirements Analysis**: Read requirements.md, requirement-verification-questions.md
-   - **User Stories**: Read stories.md, personas.md, story-generation-plan.md
-   - **Application Design**: Read application-design artifacts (components.md, component-methods.md, services.md)
-   - **Design (Units)**: Read unit-of-work.md, unit-of-work-dependency.md, unit-of-work-story-map.md
-   - **Per-Unit Design**: Per-unit artifacts live under `aidlc-docs/construction/{unit-name}/` in
-     `functional-design/`, `nfr-requirements/`, `nfr-design/`, and `infrastructure-design/`
-     subdirectories. On resume, determine the in-progress unit from `aidlc-state.md` and load that
-     unit's design artifacts, plus the design artifacts of any units it depends on (per
-     `unit-of-work-dependency.md`). The exact files in each subdirectory are enumerated by the
-     corresponding construction stage rules.
-   - **Code Stages**: Read all code files, plans, AND all previous artifacts
-4. **Smart Context Loading by Stage**:
-   - **Early Stages (Workspace Detection, Reverse Engineering)**: Load workspace analysis
-   - **Requirements/Stories**: Load reverse engineering + requirements artifacts
-   - **Design Stages**: Load requirements + stories + architecture + design artifacts
-   - **Code Stages**: Load ALL artifacts + existing code files
-5. **Adapt options** based on architectural choice and current phase
-6. **Show specific next steps** rather than generic descriptions
-7. **Log the continuity prompt** in audit.md with timestamp
-8. **Context Summary**: After loading artifacts, provide brief summary of what was loaded for user awareness
-9. **Asking questions**: ALWAYS ask clarification or user feedback questions by placing them in .md files. DO NOT place the multiple-choice questions in-line in the chat session.
+## Rules
 
-## Error Handling
-If artifacts are missing or corrupted during session resumption, see [error-handling.md](error-handling.md) for guidance on recovery procedures. 
+- Never guess the current stage from the last thing in the chat.
+- Never re-fetch the work item or re-explore the codebase "to be safe" if
+  `context.md` already holds it and nothing changed; say what you are reusing.
+- If `openflow/state.json` does not exist, this is a first run — see
+  `../inception/workspace-detection.md` and `welcome-message.md`.
+- If state and disk disagree (state says a stage is complete but the artifacts are
+  gone, or the reverse), stop and follow `error-handling.md`. Do not silently pick
+  one.
+- Partial work from an interrupted session is normal: read what exists, report what
+  is missing, and continue from there rather than starting over.

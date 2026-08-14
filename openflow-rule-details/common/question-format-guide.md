@@ -163,12 +163,13 @@ C) Maybe
 
 #### Step 1: Create Question File
 ```markdown
-Create aidlc-docs/{phase-name}-questions.md with all questions
+Create openflow/changes/{ticket}/questions.md with all questions
+(append a `## {stage-key}` section when the file already exists)
 ```
 
 #### Step 2: Inform User
 ```
-"I've created {phase-name}-questions.md with [X] questions. 
+"I've created openflow/changes/{ticket}/questions.md with [X] questions. 
 Please answer each question by filling in the letter choice after the [Answer]: tag. 
 If none of the options match your needs, choose the last option (Other) and describe your preference. Let me know when you're done."
 ```
@@ -178,7 +179,7 @@ Wait for user to say "done", "completed", "finished", or similar.
 
 #### Step 4: Read and Analyze
 ```
-Read aidlc-docs/{phase-name}-questions.md
+Read openflow/changes/{ticket}/questions.md
 Extract all answers
 Validate completeness
 Proceed with analysis

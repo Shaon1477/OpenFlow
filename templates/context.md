@@ -1,50 +1,68 @@
-# Ticket Context — {{PARENT_TICKET_ID}}
+# Work item context — {{TICKET_ID}}
 
-> Generated at Step 1 (Read Ticket). Human review required before advancing.
+- **Title**: {{TICKET_TITLE}}
+- **Flow**: {{FLOW_ID}}
+- **Source**: <!-- provider + url, or "manual" -->
+- **Depth**: <!-- minimal | standard | comprehensive, and why -->
 
 ## Summary
 
-| Field | Value |
-| --- | --- |
-| **Parent ticket** | {{PARENT_TICKET_ID}} |
-| **Title** | {{TICKET_TITLE}} |
-| **Flow** | {{FLOW_ID}} |
-| **Depth** | minimal / standard / comprehensive |
-| **Brownfield** | yes / no |
+<!-- What is being delivered and why, in product language. -->
 
-## Sub-tickets
+## Acceptance criteria
 
-| Role | Ticket ID | Branch verified |
-| --- | --- | --- |
-| Frontend | {{SUB_FRONTEND}} | |
-| Backend | {{SUB_BACKEND}} | |
-| Context | {{SUB_CONTEXT}} | |
-| Test | {{SUB_TEST}} | |
+<!-- From the work item. If it had none, say so and record what was agreed. -->
 
-## Requirements (from tracker)
+- [ ]
 
-{{REQUIREMENTS_BODY}}
+## Roles, repos and sub-items
 
-## Scope & impact
+| Role | Repo | Sub-item | Branch |
+|---|---|---|---|
+|  |  |  |  |
 
-- **Touches UI**: yes / no / unknown
-- **Touches API**: yes / no / unknown
-- **Touches data store**: yes / no / unknown
-- **Cross-repo impact**:
+## Scope
+
+| Area | Affected | Notes |
+|---|---|---|
+| UI |  |  |
+| API contract |  |  |
+| Data model |  |  |
+| Infrastructure |  |  |
+| Documentation |  |  |
+
+## Cross-role contracts touched
+
+<!-- The seams between roles. These are what drift detection will watch. -->
+
+-
+
+## Constraints from project rules
+
+<!-- Pulled from each role's rule pack: mandated stack, patterns, limits. -->
+
+-
+
+## Existing work to build on
+
+<!-- Relevant existing code, prior deliveries, artifacts worth adopting. -->
+
+-
+
+## Assumptions
+
+<!-- Stated so a reviewer can correct them. -->
+
+-
+
+## Decisions
+
+| Decision | Rationale |
+|---|---|
+|  |  |
 
 ## Open questions
 
-<!-- Use question-format-guide: multiple choice with [Answer]: tags in this file -->
+<!-- Mirror blocking items into questions.md with [Answer]: lines. -->
 
-## Extensions opted in
-
-- Security: {{EXT_SECURITY}}
-- Property-based testing: {{EXT_TESTING}}
-- Resiliency: {{EXT_RESILIENCY}}
-
-## Decisions & assumptions
-
-## References
-
-- Tracker URL:
-- Related specs / designs:
+-

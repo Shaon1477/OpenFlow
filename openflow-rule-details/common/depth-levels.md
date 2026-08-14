@@ -1,6 +1,6 @@
 # Adaptive Depth
 
-**Purpose**: Explain how AI-DLC adapts detail level to problem complexity
+**Purpose**: Explain how OpenFlow adapts detail level to problem complexity
 
 ## Core Principle
 
@@ -9,9 +9,9 @@
 ## Stage Selection vs Detail Level
 
 ### Stage Selection (Binary)
-- **Workflow Planning** decides: EXECUTE or SKIP for each stage
-- **If EXECUTE**: Stage runs and creates ALL its defined artifacts
-- **If SKIP**: Stage doesn't run at all
+- The **flow** decides which stages exist; `optional: true` stages may be skipped
+- **If a stage runs**: it creates ALL its defined artifacts
+- Depth never removes an artifact — it changes how much is written inside it
 
 ### Detail Level (Adaptive)
 - **Simple problems**: Concise artifacts with essential detail
@@ -29,39 +29,31 @@ The model considers these factors when determining appropriate detail:
 5. **Available Context**: Greenfield vs brownfield, existing documentation
 6. **User Preferences**: Has user expressed preference for brevity or detail?
 
-## Example: Requirements Analysis Artifacts
+## Example: analyze stage
 
-**All scenarios create the same artifacts**:
-- `requirement-verification-questions.md` (if needed)
-- `requirements.md`
+**Always produced**: `context.md` (plus `questions.md` when anything is ambiguous)
 
-**Note**: User's initial request is captured in `audit.md` (no separate user-intent.md needed)
+### Simple scenario (bug fix)
+- **context.md**: Short summary, the failing behaviour, one repo, scope matrix rows that apply
+- **questions.md**: Only the questions that actually block
 
-**Detail level varies by complexity**:
+### Complex scenario (cross-repo migration)
+- **context.md**: Full scope matrix, cross-role contracts, constraints per role, assumptions, decisions
+- **questions.md**: Several rounds; unresolved business rules block the gate
 
-### Simple Scenario (Bug Fix)
-- **requirement-verification-questions.md**: necessary clarifying questions
-- **requirements.md**: Concise functional requirement, minimal sections
+## Example: plan stage
 
-### Complex Scenario (System Migration)
-- **requirement-verification-questions.md**: Multiple rounds, 10+ questions
-- **requirements.md**: Comprehensive functional + non-functional requirements, traceability, acceptance criteria
+**Always produced**: `proposal.md`, `specs/`, `design.md`, `tasks.md`
 
-## Example: Application Design Artifacts
+### Simple scenario (single component)
+- **specs/**: One requirement, one or two scenarios
+- **design.md**: The pattern being followed and the files touched
+- **tasks.md**: A handful of tasks
 
-**All scenarios create the same artifacts**:
-- `application-design.md`
-- `component-diagram.md`
-
-**Detail level varies by complexity**:
-
-### Simple Scenario (Single Component)
-- **application-design.md**: Basic component description, key methods
-- **component-diagram.md**: Simple diagram with essential relationships
-
-### Complex Scenario (Multi-Component System)
-- **application-design.md**: Detailed component responsibilities, all methods with signatures, design patterns, alternatives considered
-- **component-diagram.md**: Comprehensive diagram with all relationships, data flows, integration points
+### Complex scenario (multi-component change)
+- **specs/**: Multiple capability files, failure scenarios, traceability to criteria
+- **design.md**: Structure table, full contract detail, non-functional decisions with values, rejected alternatives
+- **tasks.md**: Grouped and ordered tasks, each traced to a requirement
 
 ## Guiding Principle for Model
 

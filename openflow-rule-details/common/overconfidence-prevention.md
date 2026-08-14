@@ -2,7 +2,7 @@
 
 ## Problem Statement
 
-AI-DLC was exhibiting overconfidence by not asking enough clarifying questions, even for complex project intent statements. This led to assumptions being made instead of gathering proper requirements.
+OpenFlow was exhibiting overconfidence by not asking enough clarifying questions, even for complex project intent statements. This led to assumptions being made instead of gathering proper requirements.
 
 ## Root Cause Analysis
 
@@ -90,10 +90,10 @@ These directives were telling the AI to avoid asking questions rather than encou
 ## Maintenance
 
 This guide should be referenced when:
-- Adding new stages to AI-DLC
+- Adding new stages to OpenFlow
 - Updating existing stage instructions
-- Reviewing AI-DLC performance for overconfidence issues
-- Training team members on AI-DLC question generation principles
+- Reviewing OpenFlow performance for overconfidence issues
+- Training team members on OpenFlow question generation principles
 
 ## Key Takeaway
 

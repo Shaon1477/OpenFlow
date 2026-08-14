@@ -1,6 +1,16 @@
 import { loadConfig } from "../lib/config.js";
-import { loadFlowDefinition, getStep } from "../lib/flow-loader.js";
-import { readState } from "../lib/state.js";
+import { applyDrift, computeDrift } from "../lib/drift.js";
+import { loadFlowDefinition } from "../lib/flow-loader.js";
+import { readState, writeState, type TicketState } from "../lib/state.js";
+
+const MARK: Record<string, string> = {
+  pending: "□",
+  in_progress: "▸",
+  awaiting_approval: "◇",
+  completed: "✓",
+  skipped: "–",
+  blocked: "✗",
+};
 
 export interface StatusOptions {
   cwd?: string;
@@ -11,49 +21,54 @@ export function runStatus(options: StatusOptions = {}): void {
   const cwd = options.cwd ?? process.cwd();
   const config = loadConfig(cwd);
   const state = readState(cwd);
-
   if (!state) {
-    console.log("No openflow/state.json — run `openflow init` then `openflow start <ticket>`.");
+    console.log("No openflow/state.json — run `openflow start <ticket>`.");
     return;
   }
 
-  const flow = loadFlowDefinition(state.flow || config.project.flow, cwd);
-  const ticketId = (options.ticketId ?? state.active_ticket) ?? undefined;
+  const entries: [string, TicketState][] = options.ticketId
+    ? [[options.ticketId.toUpperCase(), state.tickets[options.ticketId.toUpperCase()]]]
+    : Object.entries(state.tickets);
 
-  console.log(`Flow: ${flow.name} (${flow.id})`);
-  console.log(`Global step: ${state.current_step}`);
   console.log(`Active ticket: ${state.active_ticket ?? "(none)"}`);
-  console.log("");
+  let mutated = false;
 
-  const ticketsToShow = ticketId
-    ? { [ticketId]: state.tickets[ticketId] }
-    : state.tickets;
-
-  for (const [id, ticket] of Object.entries(ticketsToShow)) {
+  for (const [id, ticket] of entries) {
     if (!ticket) {
-      console.log(`Ticket ${id}: not found`);
+      console.log(`\nTicket ${id}: not found`);
       continue;
     }
-    console.log(`── ${id}: ${ticket.title} [${ticket.status}] ──`);
-    if (ticket.sub_tickets) {
-      console.log(`  Sub-tickets: ${JSON.stringify(ticket.sub_tickets)}`);
+    const flow = loadFlowDefinition(ticket.flow, cwd);
+    const report = computeDrift(cwd, config, flow, id, ticket);
+    if (applyDrift(ticket, report, new Date().toISOString())) mutated = true;
+
+    console.log(`\n── ${id}: ${ticket.title} [${ticket.status}] — flow ${flow.id} ──`);
+    if (Object.keys(ticket.sub_tickets).length) {
+      const pairs = Object.entries(ticket.sub_tickets)
+        .map(([role, value]) => `${role}=${value}`)
+        .join(", ");
+      console.log(`  Sub-items: ${pairs}`);
     }
-    if (ticket.blockers?.length) {
-      console.log(`  Blockers: ${ticket.blockers.join(", ")}`);
-    }
+    const blocker = ticket.blockers.find((entry) => !entry.cleared_at);
+    if (blocker) console.log(`  Blocked: ${blocker.reason} (since ${blocker.since})`);
 
     for (const step of flow.steps) {
-      const rec = ticket.steps[String(step.id)];
-      const status = rec?.status ?? "pending";
+      const record = ticket.steps[step.key];
+      const status = record?.status ?? "pending";
+      const cursor = ticket.cursor === step.key ? " ← current" : "";
       const optional = step.optional ? " (optional)" : "";
-      const current =
-        ticket.current_step === step.id || state.current_step === step.id
-          ? " ← current"
-          : "";
+      const stale = record?.stale ? `  ⚠ stale (${record.stale.upstream.join(", ")})` : "";
+      const external = record?.external ? " [adopted]" : "";
       console.log(
-        `  ${String(step.id).padStart(2)}. ${step.name}${optional}: ${status}${current}`,
+        `  ${MARK[status] ?? "?"} ${step.key.padEnd(18)} ${step.name}${optional}${external}${cursor}${stale}`,
       );
     }
-    console.log("");
+
+    if (report.modified.length) {
+      console.log("  Changed since approval:");
+      for (const entry of report.modified) console.log(`    ${entry.key}`);
+    }
   }
+
+  if (mutated) writeState(cwd, state);
 }

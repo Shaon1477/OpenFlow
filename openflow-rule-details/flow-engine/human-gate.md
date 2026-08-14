@@ -1,168 +1,88 @@
-# Human Gate Protocol
+# Human gate protocol
 
-**Purpose**: Ensure a human explicitly approves step outputs before OpenFlow advances. Gated steps are quality checkpoints — the AI prepares, verifies, and presents; the human decides.
-
-**When to run**: End of every step where `human_gate: true` in flow YAML (default for all 10 steps in `v5-workflow`). Additional verification steps apply before approval on implementation steps.
-
-**Related**: `step-executor.md`, `common/workflow-changes.md`, OpenSpec `openspec-verify-change`.
+**Purpose.** A gate is where a human decides. The agent prepares, verifies and
+presents; it never approves.
 
 ---
 
-## Core Rules
+## Core rules
 
-1. **Never auto-advance** past a gated step after producing artifacts.
-2. **Wait** for explicit `/openflow approve` (or CLI `openflow approve`) before updating `current_step`.
-3. **Record** approval timestamp in `audit.md` and `state.json`.
-4. If the user rejects or requests changes, stay on the same step — use `recovery.md` or revise in place.
-5. Use `common/question-format-guide.md` for structured questions in `questions.md`; gate conversation may summarize, but decisions on ambiguity belong in files.
-
----
-
-## Approval Command
-
-```
-/openflow approve
-```
-
-Optional comment:
-
-```
-/openflow approve LGTM — proceed to backend doc
-```
-
-On approve:
-
-1. Validate gate checklist for current step (below).
-2. Set `step_status[current]` → `completed`.
-3. Increment `current_step` to next active step per `flow-loader.md`.
-4. Append to `audit.md`: `**Human gate**: approved at {ISO timestamp}`.
-5. Briefly state next step and ON ENTRY actions — do not execute Step N+1 MAIN WORK unless user asks to continue in the same session.
+1. **Never auto-advance** a gated stage.
+2. **Only `openflow approve` advances** the cursor. Do not edit state by hand.
+3. Approval fingerprints the stage's artifacts. That baseline is what later drift
+   detection compares against, so approving unfinished work poisons the signal.
+4. If the human rejects or asks for changes, stay on the stage and fix it.
+5. Blocked work items cannot be approved; clear the blocker first.
 
 ---
 
-## Block Command
+## What to present at every gate
 
-```
-/openflow block "waiting on API schema from platform team"
-```
+- **Stage**: key, name, role, sub-item
+- **Artifacts**: paths, as written
+- **Decisions**: one line each, with the reason
+- **Verification**: for stages with `verify: true`, all three dimensions
+- **Open questions**: none, or a link to `questions.md`
+- **Risks**: what might be wrong or incomplete
+- **Next action**: `openflow approve`, or `openflow block "reason"`
 
-On block:
+Keep it short enough to read. Detail belongs in the artifacts.
 
-1. Set `openflow/state.json` → `"blocked": { "reason": "...", "at_step": N, "since": "ISO" }`.
-2. Log in `audit.md` under `## Blocker`.
-3. Stop all MAIN WORK until user clears blocker (`/openflow approve` after resolution, or explicit "unblock" message documented in audit).
+### Extra, by stage kind
 
-Do not advance `current_step` while blocked.
+| Kind | Also show |
+|---|---|
+| `analyze` | Sub-item map per role, scope matrix, branch status per repo |
+| `plan` | The cross-role contract section verbatim — that is what the other role consumes |
+| `implement` | Branch, commit summary, task completion count, extensions applied |
+| `integrate` | Contract differences found and how each was resolved, smoke results |
+| `test-cases` | Coverage table: acceptance criterion → case ids, plus gaps |
+| `test-automation` | Run matrix per environment, bugs found, anything skipped |
+| `handoff` | Contract changes and known gaps sections |
+| `sync-context` | Which living documents changed, and `openflow check` output |
 
 ---
 
-## Pre-Approval Verification (Implementation Steps)
+## Verification before approval
 
-For **Steps 3, 6, 7, 8**, run **`openspec-verify-change`** before showing the gate UI:
+When the manifest sets `verify: true`, report all three and do not hide a failure:
 
 | Dimension | Question |
-|-----------|----------|
-| Completeness | All `tasks.md` checkboxes done? |
-| Correctness | Implementation matches `specs/` and acceptance criteria? |
-| Coherence | Aligns with `design.md` and cross-repo contracts? |
+|---|---|
+| Completeness | Is every task genuinely done? |
+| Correctness | Does behaviour match every spec scenario and acceptance criterion? |
+| Coherence | Does it match `design.md` and the cross-role contract? |
 
-If verification fails: fix or ask user; gate stays open. Report failures in the gate summary.
-
-Step 7 additionally reference `construction/build-and-test.md` for integration smoke results.
-
-Step 8 gate: all configured environments passing (local → dev → test per project).
+A failed dimension keeps the gate closed. Say what failed and what you propose.
 
 ---
 
-## What to Show at Each Gate
+## Approving and blocking
 
-Present a consistent markdown summary in chat (and optionally `openflow/changes/{ticket}/gate-summary.md`):
+```bash
+openflow approve                      # current stage
+openflow approve -m "LGTM"            # with a comment in the audit trail
+openflow approve --step backend-plan  # re-baseline one stage (typically stale)
 
-### All gated steps (minimum)
-
-- **Step**: N — {title}
-- **Parent ticket**: {id} + tracker browse URL
-- **Artifacts produced** (paths, clickable relative to workspace)
-- **Open questions**: none | link to `questions.md`
-- **Blocked**: no | reason
-- **Action**: `/openflow approve` or `/openflow block "reason"`
-
-### Step 1 — Read Ticket
-
-- Link to `context.md`
-- Sub-ticket table (frontend, backend, context, test) with IDs and titles
-- Extension opt-ins (security, testing, resiliency)
-- Branch verification per repo
-- Confirm: "Sub-tickets and context accurate?"
-
-### Steps 2, 4, 5 — Implementation / test docs
-
-- OpenSpec change path: `proposal.md`, `specs/`, `design.md`, `tasks.md`
-- Depth level used (minimal / standard / comprehensive)
-- Skill used: propose | new-change | ff-change
-
-### Steps 3, 6, 7 — Implementation
-
-- Feature branch name per repo
-- `tasks.md` completion count
-- `openspec-verify-change` three-line result
-- Security/resiliency extensions applied (yes/no)
-
-### Step 8 — Test scripts
-
-- Test repo change path
-- Environments run and pass/fail matrix
-- Known flakes or skipped suites
-
-### Step 9 — Jira context doc
-
-- Path to `{context_repo}/jira-context/{parent}-context.md`
-- Summary bullets for reviewer
-
-### Step 10 — Functional context / closure
-
-- Sections updated in living functional context
-- Archive plan for sub-ticket changes
-- Human confirms ready — OpenFlow does not enforce a DoD checklist
-- Final: parent ticket ready for Done in tracker (human moves status)
-
----
-
-## Rejection / Change Requests
-
-If user says "not approved" or requests edits without `/openflow block`:
-
-1. Capture feedback in `audit.md`.
-2. Remain on same `current_step`; set `step_status` → `in_progress`.
-3. Apply minimal fix:
-   - Doc issues → `openspec-update-change`
-   - Impl incomplete → continue `openspec-apply-change` / `openspec-continue-change`
-4. Re-present gate when ready.
-
----
-
-## Non-Gated Steps
-
-If a custom flow sets `human_gate: false`:
-
-- Log `**Human gate**: skipped (flow config)` in `audit.md`.
-- Still recommend user acknowledgment for production flows.
-
----
-
-## State Fields (Gate)
-
-```json
-{
-  "current_step": 2,
-  "step_status": { "2": "awaiting_approval" },
-  "blocked": null,
-  "last_gate": {
-    "step": 2,
-    "presented_at": "2026-07-25T02:22:00Z",
-    "approved_at": null
-  }
-}
+openflow block "waiting on the auth scope from platform"
+openflow block --clear
 ```
 
-Update `last_gate.approved_at` on `/openflow approve`.
+---
+
+## Rejection
+
+If the human says "not approved" or requests edits:
+
+1. Record the feedback in the audit trail.
+2. Stay on the same stage.
+3. Apply the smallest correct fix — edit the artifact in place; revisit an upstream
+   stage only if the problem originated there.
+4. Re-present the gate.
+
+---
+
+## Non-gated stages
+
+A flow may set `human_gate: false`. Then: state what was produced, continue in a
+new turn, and never treat the absence of a gate as permission to skip verification.

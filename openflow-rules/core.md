@@ -1,258 +1,175 @@
-# OpenFlow — Master Workflow Rules
+# OpenFlow — core rules
 
-> **PRIORITY:** This workflow OVERRIDES ad-hoc coding when the user starts or continues an OpenFlow delivery.  
-> **Principle:** OpenFlow owns the workflow. aidlc supplies engineering discipline. OpenSpec supplies spec artifacts. The AI tool executes.
+> **Priority.** When an OpenFlow delivery is active, this workflow overrides ad-hoc
+> coding. Ask the engine what to do next; do not improvise a parallel process.
 
 ---
 
 ## Identity
 
-OpenFlow is a **flow-agnostic, multi-repo SDLC orchestration engine**.
+OpenFlow is a **flow orchestration engine** for AI-assisted delivery.
 
-- It does **not** replace Jira, Linear, GitHub Issues, or the coding assistant.
-- It **does** decide the next valid step, enforce human gates, load the right rules/skills, and keep `openflow/state.json` + `audit.md` coherent.
-- Every flow **always** has a `context` repo (docs, test cases, functional context). Its path is configurable; its presence is not optional.
+- **OpenFlow owns the process**: which stage is next, which repo it touches, which
+  rules load, when a human must approve, what counts as done.
+- **The project owns the craft**: every engineering convention comes from the
+  project's own rule packs, not from OpenFlow.
+- **The coding agent executes**: OpenFlow writes no product code.
 
----
-
-## Rule Details Resolution
-
-When loading any detail file, resolve the rule-details root in this order (use the first that exists):
-
-1. `openflow-rule-details/` (this package / workspace)
-2. `.openflow/openflow-rule-details/`
-3. Paths configured in `openflow.yml` under `rules.details_root` (if present)
-
-All relative references below (e.g. `common/session-continuity.md`) are relative to that root.
-
-**Always load at session start:**
-
-| File | Why |
-|---|---|
-| `common/process-overview.md` | Lifecycle overview |
-| `common/session-continuity.md` | Resume protocol |
-| `common/content-validation.md` | Validate before any write |
-| `common/question-format-guide.md` | Questions go in `.md` files, never only in chat |
-| `common/overconfidence-prevention.md` | Ask when ambiguous |
-| `common/error-handling.md` | Severity + recovery |
-| `flow-engine/flow-loader.md` | Load active flow |
-| `flow-engine/step-executor.md` | Execute current step |
-| `flow-engine/human-gate.md` | Approval protocol |
-| `flow-engine/recovery.md` | Modify / retry / resume |
+It does not replace the tracker, the coding assistant, or the team's standards.
 
 ---
 
-## Config & State Contract
+## Session bootstrap — every conversation
+
+```bash
+openflow next --json
+```
+
+That single command returns the stage, its protocol file, the engine rules, **this
+project's rule packs for the role**, the skills to run, the exact artifact paths,
+any blocker, and anything that went stale. Then:
+
+1. Load the stage protocol (`openflow-rule-details/stages/<kind>.md`).
+2. Load the engine rules the manifest lists.
+3. Load **every** rule pack file the manifest lists.
+4. Load the artifacts of each `depends_on` stage.
+5. Execute that one stage. Stop at its gate.
+
+If there is no state yet: `openflow-rule-details/inception/workspace-detection.md`,
+then `common/welcome-message.md`. If there is: `common/session-continuity.md`.
+
+**Always loaded:** `common/session-continuity.md`,
+`common/overconfidence-prevention.md`, `common/question-format-guide.md`,
+`common/content-validation.md`, `common/error-handling.md`,
+`flow-engine/step-executor.md`, `flow-engine/human-gate.md`,
+`flow-engine/recovery.md`.
+
+### Rule-details resolution
+
+First path that exists wins, so a project can override any engine rule:
+
+1. `.openflow/openflow-rule-details/`
+2. `openflow/openflow-rule-details/`
+3. the installed package's `openflow-rule-details/`
+
+---
+
+## Two kinds of rules — and which wins
+
+| | Engine rules | Project rule packs |
+|---|---|---|
+| Live in | `openflow-rule-details/` | anywhere the project points to |
+| Cover | Process: stages, gates, artifacts, drift, recovery | Craft: stack, patterns, layout, tests, review bar |
+| Authored by | OpenFlow | The team |
+| Wins on | Process questions | Engineering questions |
+
+Rule packs are resolved per role from `openflow.yml` → `rules.packs`, or discovered
+by convention:
+
+```
+.openflow/rules/<role>.md        .openflow/rules/<role>/*.md
+openflow/rules/<role>.md         <repo>/<role>.md
+<repo>/.openflow/rules.md        <repo>/AGENTS.md    <repo>/CLAUDE.md
+```
+
+An entry of `skill:<name>` means "run that agent skill during the stage" — how a
+team plugs its own skill into a generic flow.
+
+```bash
+openflow rules              # what resolved, and from where
+```
+
+If a role has no pack: say so once, proceed with engine defaults, and suggest
+`.openflow/rules/<role>.md`. Never invent a house style and present it as theirs.
+
+---
+
+## Stage kinds
+
+Protocols in `openflow-rule-details/stages/`: `analyze`, `plan`, `implement`,
+`test-cases`, `integrate`, `test-automation`, `handoff`, `sync-context`, `custom`.
+
+A flow composes them in any order, for any role, any number of times. Roles are
+config (`frontend`, `backend`, `mobile`, `data`, anything), never hardcoded.
+
+---
+
+## Work items are not assumed to be Jira
+
+`openflow.yml` → `intake.provider`: `jira`, `linear`, `github`, `mcp`, `file`,
+`manual`, `none`. The CLI reads `file` itself; everything else returns instructions
+you execute with whatever MCP or CLI the project has. No tracker access is a reason
+to ask the developer, never a reason to invent requirements. See
+`openflow-rule-details/intake/`.
+
+Work already done elsewhere is adopted, not redone:
+
+```bash
+openflow adopt <stage> --path <dir> --note "written by another agent"
+```
+
+---
+
+## Config and state
 
 | Artifact | Path | Role |
 |---|---|---|
-| Project config | `openflow.yml` | Flow id, tracker, repo paths, extensions |
-| Workflow state | `openflow/state.json` | Active ticket, current step, sub-tickets, blockers |
-| Ticket context | `openflow/changes/{ticket}/context.md` | Normalized ticket + scope |
-| Audit trail | `openflow/changes/{ticket}/audit.md` | ISO-timestamped actions |
-| Flow definition | `built-in-flows/{flow}.yml` or project override | Step order, gates, skills, rules |
+| Project config | `openflow.yml` | Flow, intake, repos, rules, extensions, Definition of Done |
+| State | `openflow/state.json` | Cursor, sub-items, fingerprints, staleness, blockers |
+| Work item context | `openflow/changes/{ticket}/context.md` | Normalized item and scope |
+| Questions | `openflow/changes/{ticket}/questions.md` | Blocking questions with `[Answer]:` |
+| Audit trail | `openflow/changes/{ticket}/audit.md` | Timestamped decisions and gates |
+| Stage artifacts | `{repo}/{artifacts.dir}/{sub-item}/` | proposal, specs, design, tasks |
+| Flow | `.openflow/flows/{id}.yml` or built-in | Stages, gates, dependencies |
 
-**Before every action:** read `openflow.yml` + `openflow/state.json`.  
-**After every significant action:** append to `audit.md` and update `state.json`.
-
-**Context repo constant:** `openspec-sync-specs` (Step 10) always writes living specs into the configured `context` repo.
-
----
-
-## Extensions (Opt-in)
-
-At Step 1, present opt-in prompts only (`*.opt-in.md`). Do **not** load full extension rule files until opted in.
-
-| Extension | Opt-in | Full rules | Applied at |
-|---|---|---|---|
-| Security baseline | `extensions/security/baseline/security-baseline.opt-in.md` | `security-baseline.md` | Steps 3, 6, 8 |
-| Property-based testing | `extensions/testing/property-based/property-based-testing.opt-in.md` | `property-based-testing.md` | Step 8 |
-| Resiliency baseline | `extensions/resiliency/baseline/resiliency-baseline.opt-in.md` | `resiliency-baseline.md` | Steps 6, 7 |
-
-Record choices in `openflow/state.json` under the ticket's `extensions` map. Disabled extensions are never loaded. Enabled extension violations are **blocking**.
+Never hand-edit `openflow/state.json`. Use the CLI.
 
 ---
 
-## Slash Commands
+## Commands
 
-| Command | Behavior |
+| Command | Purpose |
 |---|---|
-| `/openflow init` | Project setup (or run CLI `openflow init`) |
-| `/openflow start {ticket}` | Begin or resume delivery for ticket |
-| `/openflow status` | Show current step, gates, blockers, progress |
-| `/openflow approve` | Pass current human gate; advance to next step |
-| `/openflow block "reason"` | Record blocker; pause |
-| `/openflow modify-step {role\|N} -ticket {id}` | Restart/revise step (confirm destructive) — see `flow-engine/recovery.md` |
-| `/openflow retry-step {N}` | Retry/resume step from checkpoint |
-| `/openflow archive {ticket}` | Archive OpenSpec changes + mark ticket Done |
-| `/openflow onboard` | Guided first-cycle walkthrough (`openspec-onboard`) |
+| `openflow init` | Set up a project once |
+| `openflow flows` | List available flows |
+| `openflow start <id>` | Start or resume a work item (`--flow`, `--sub role=id`) |
+| `openflow next` | Current stage manifest (`--json` for agents) |
+| `openflow approve` | Pass the gate, fingerprint artifacts, advance (`--step`, `-m`) |
+| `openflow block` | Record or clear a blocker (`--clear`) |
+| `openflow status` | Stage progress, blockers, stale work |
+| `openflow rules` | Resolved rule packs per role |
+| `openflow drift` | Detect post-approval changes, mark dependents stale |
+| `openflow check` | Executable Definition of Done |
+| `openflow adopt` | Register externally authored work as a stage |
+| `openflow archive` | Close out (blocked unless the Definition of Done passes) |
 
-CLI equivalents: `openflow init|start|approve|status|archive`.
-
----
-
-## Session Bootstrap (Every Conversation)
-
-1. Resolve rule-details root.
-2. Load common + flow-engine files listed above.
-3. Run `inception/workspace-detection.md`:
-   - If `openflow/state.json` exists → resume (`common/session-continuity.md`).
-   - Else → first-run welcome (`common/welcome-message.md`).
-4. Load flow via `flow-engine/flow-loader.md`.
-5. Execute **only** the current step via `flow-engine/step-executor.md` + matching `steps/step-NN-*.md`.
-6. Stop at human gate unless the step is not gated.
-
-**Never** jump ahead, skip gates, or implement code before the step's plan/doc gate is approved.
+Skills: `/openflow-start`, `/openflow-run`, `/openflow-approve`, `/openflow-status`,
+`/openflow-revisit`, `/openflow-adopt`, `/openflow-rules`, `/openflow-archive`.
 
 ---
 
-## Ten-Step Delegation Map
+## Non-negotiables
 
-Authoritative detail lives in `steps/`. Summary:
-
-| Step | Detail file | OpenSpec skills | Key aidlc rules |
-|---|---|---|---|
-| 1 Read Ticket | `steps/step-01-read-ticket.md` | `openspec-explore` | workspace-detection, session-continuity, welcome, tracker-*, requirements-analysis, overconfidence, workflow-planning, question-format, extension opt-ins |
-| 2 Frontend Doc | `steps/step-02-frontend-doc.md` | propose / new-change / ff-change | depth-levels, functional-design |
-| 3 Frontend Impl | `steps/step-03-frontend-impl.md` | apply-change, verify-change | code-generation; security if opted in |
-| 4 Test Cases | `steps/step-04-test-cases.md` | propose | requirements-analysis, overconfidence |
-| 5 Backend Doc | `steps/step-05-backend-doc.md` | propose / new-change / ff-change | depth-levels, functional-design, nfr-*, infrastructure-design |
-| 6 Backend Impl | `steps/step-06-backend-impl.md` | apply-change, verify-change | code-generation; security/resiliency if opted in |
-| 7 Integration | `steps/step-07-integration.md` | apply-change, verify-change | resiliency if opted in; build-and-test |
-| 8 Test Scripts | `steps/step-08-test-scripts.md` | propose, apply-change | build-and-test; property-based if opted in |
-| 9 Jira Context | `steps/step-09-jira-context.md` | propose, apply-change | — |
-| 10 Functional Context | `steps/step-10-functional-context.md` | sync-specs, update-change, archive-change, bulk-archive-change | — |
-
-Skill index: `openspec-skills/README.md`. Skill bodies live **in this repo**: `openspec-skills/*/SKILL.md` (vendored). Flow skills: `skills/openflow-*/SKILL.md`.
+1. **One stage per turn.** `openflow next` decides; never jump ahead.
+2. **No code before its plan is approved.** Implementation stages follow
+   `construction/code-generation.md`: numbered plan → human read → execute.
+3. **Never self-approve.** Only the human, via `openflow approve`.
+4. **Ask instead of assuming.** Blocking ambiguity goes into `questions.md` and the
+   stage waits.
+5. **Write only where told.** The manifest's repos and artifact paths, nothing else.
+6. **Changes propagate.** After any hand edit, `openflow drift`; resolve stale
+   stages before continuing.
+7. **Documentation is part of done.** `sync-context` is never skipped, and
+   `openflow archive` enforces it. `--force` requires an explicit human decision.
+8. **Confirm destructive actions** before deleting or regenerating artifacts.
 
 ---
 
-## Step Execution Protocol
+## What OpenFlow is not
 
-Follow `flow-engine/step-executor.md` strictly:
+- Not a tracker, and not tied to one
+- Not the code generator — the agent is
+- Not a house style — the project's rule packs are
+- Not tied to one AI tool; rules and skills are portable
 
-```
-ON ENTRY → MAIN WORK → OUTPUT → audit.md → HUMAN GATE
-```
-
-1. **ON ENTRY** — load listed rules; depth/plan/extensions as required.
-2. **MAIN WORK** — run OpenSpec skill(s); write artifacts to the correct repo.
-3. **OUTPUT** — validate with `content-validation.md` before writing.
-4. **Audit** — append ISO timestamped entry to `openflow/changes/{ticket}/audit.md`.
-5. **HUMAN GATE** — present artifacts; wait for `/openflow approve` (see `human-gate.md`).
-
-Impl steps (3, 6, 7) require `code-generation.md` Part 1 (numbered plan + approval) before Part 2 (execute).
-
-Before `/openflow approve` on impl/test steps, run `openspec-verify-change` (Completeness / Correctness / Coherence).
-
----
-
-## Tracker Integration
-
-1. Read `tracker.provider` from `openflow.yml`.
-2. Follow `tracker/tracker-bridge.md` → normalize via `tracker/ticket-schema.md`.
-3. Resolve four role sub-tickets via `tracker/subtask-collection.md` (frontend, backend, context, test) — confirm with human at Step 1 gate.
-4. Never hardcode a single tracker; adapters are provider-specific, schema is not.
-
----
-
-## Multi-Repo Rules
-
-- Repo paths come from `openflow.yml` → `repos.{frontend,backend,context,test,...}`.
-- OpenSpec changes live **inside each target repo**: `{repo}/openspec/changes/{sub-ticket}/`.
-- OpenFlow orchestration state lives in the **orchestration workspace**: `openflow/`.
-- Verify feature branches exist (or create per `branching.pattern`) in all involved repos at Step 1.
-- `context` repo is mandatory for every flow.
-
----
-
-## Human Gates
-
-Gated by default on all 10 v5 steps. At each gate:
-
-1. Summarize what was produced (paths).
-2. Call out risks / open questions.
-3. Wait for `/openflow approve` or `/openflow block "…"`.
-4. On approve: update `state.json` `current_step`, log audit, load next step detail.
-
-Do **not** auto-advance.
-
----
-
-## Recovery
-
-See `flow-engine/recovery.md` and PLAN §3.
-
-| Situation | aidlc | OpenSpec |
-|---|---|---|
-| Modify step / bad impl doc | `common/workflow-changes.md` | `openspec-update-change` |
-| Retry / resume mid-step | `workflow-changes.md` / `error-handling.md` | `openspec-continue-change` |
-| Requirements changed | `workflow-changes.md` | `openspec-update-change` |
-| Corrupted artifact | `error-handling.md` | `openspec-new-change` |
-
-**Always confirm destructive changes** before archive/reset/restart.
-
----
-
-## Audit Trail Format
-
-Every significant action → `openflow/changes/{ticket}/audit.md`:
-
-```markdown
-## [Step N] [Action]
-**Timestamp**: 2026-07-25T02:00:00Z
-**Action**: …
-**Artifacts**: …
-**Decision**: …
-```
-
----
-
-## Content & Questions
-
-- Before any file write: `common/content-validation.md` + `ascii-diagram-standards.md` when diagrams are involved.
-- User questions: `common/question-format-guide.md` → write `openflow/changes/{ticket}/questions.md` (or step-local questions file), not chat-only prompts.
-- Terminology: `common/terminology.md` (Phase vs Stage, artifact types). Mid-flow changes: `common/workflow-changes.md`.
-
----
-
-## Built-in Flows
-
-| Flow id | File | Use when |
-|---|---|---|
-| `v5-workflow` | `built-in-flows/v5-workflow.yml` | Full FE+BE+context+test |
-| `mobile-flow` | `built-in-flows/mobile-flow.yml` | Mobile + backend + context + test |
-| `frontend-flow` | `built-in-flows/frontend-flow.yml` | Frontend-centric subset |
-| `backend-flow` | `built-in-flows/backend-flow.yml` | Backend-centric subset |
-
-Active flow = `openflow.yml` → `project.flow` (or CLI override).
-
----
-
-## Human Verification (Step 10)
-
-OpenFlow does **not** enforce a Definition of Done checklist. The human reviews functional context updates and decides when the ticket is complete. `/openflow approve` on Step 10 + `openflow archive` is the closeout signal.
-
----
-
-## What OpenFlow Is NOT
-
-- Not a replacement for the issue tracker or design tool
-- Not the code generator (the AI tool is)
-- Not a cloud orchestration service
-- Not locked to one AI IDE — rules are portable
-
----
-
-## Quick Start for the AI
-
-```
-1. User: /openflow start PROD-5100
-2. Load this file + common + flow-engine
-3. workspace-detection → resume or welcome
-4. Execute Step 1 (steps/step-01-read-ticket.md)
-5. Stop at human gate
-6. On /openflow approve → advance; repeat until Step 10 + archive
-```
-
-When in doubt: load the step detail file for `current_step` and follow it. Do not invent a parallel workflow.
+When unsure: run `openflow next`, load what it lists, do that stage, stop.

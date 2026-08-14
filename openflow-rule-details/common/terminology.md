@@ -1,187 +1,36 @@
-# AI-DLC Terminology Glossary
+# Terminology
 
-## Core Terminology
+Shared vocabulary. Use these words consistently in artifacts and at gates.
 
-### Phase vs Stage
+| Term | Meaning |
+|---|---|
+| **Work item** | The unit of delivery from the tracker (or a file, or the developer's request). Has an id. |
+| **Sub-item** | The per-role id under a work item. Artifacts file under it. May equal the work item id. |
+| **Flow** | The ordered set of stages for a delivery. YAML in `built-in-flows/` or `.openflow/flows/`. |
+| **Stage** | One step of a flow. Has a key, a kind, and usually a role. |
+| **Stage kind** | The protocol a stage follows: `analyze`, `plan`, `implement`, `test-cases`, `integrate`, `test-automation`, `handoff`, `sync-context`, `custom`. |
+| **Role** | A named participant with a repo: `frontend`, `backend`, `context`, `test`, or anything the project invents. |
+| **Rule pack** | The project's own engineering rules for a role. Supplied by the team, not by OpenFlow. |
+| **Engine rules** | OpenFlow's process and discipline files under `openflow-rule-details/`. |
+| **Artifacts** | Files a stage owns: `context.md`, `proposal.md`, `specs/`, `design.md`, `tasks.md`, handoff, living docs. |
+| **Gate** | The stop where a human approves before the flow advances. |
+| **Fingerprint** | Content hash of a stage's artifacts, recorded at approval. |
+| **Drift** | Artifacts changed after approval. |
+| **Stale** | A completed stage invalidated because something upstream drifted. |
+| **Adopt** | Register artifacts written outside OpenFlow as a completed stage. |
+| **Definition of Done** | The executable checks that must pass before archiving. |
+| **Living documentation** | The permanent docs in the context repo, updated by `sync-context`. |
+| **Depth** | How much analysis and documentation a work item warrants: minimal, standard, comprehensive. |
 
-**Phase**: One of the three high-level lifecycle phases in AI-DLC
-- 🔵 **INCEPTION PHASE** - Planning & Architecture (WHAT and WHY)
-- 🟢 **CONSTRUCTION PHASE** - Design, Implementation & Test (HOW)
-- 🟡 **OPERATIONS PHASE** - Deployment & Monitoring (future expansion)
+## Distinctions worth keeping straight
 
-**Stage**: An individual workflow activity within a phase
-- Examples: Context Assessment stage, Requirements Assessment stage, Code Generation stage
-- Each stage has specific prerequisites, steps, and outputs
-- Stages can be ALWAYS-EXECUTE or CONDITIONAL
-
-**Usage Examples**:
-- ✅ "The CONSTRUCTION phase contains 7 stages"
-- ✅ "The Code Generation stage is always executed"
-- ✅ "We're in the INCEPTION phase, executing the Requirements Assessment stage"
-- ❌ "The Requirements Assessment phase" (should be "stage")
-- ❌ "The CONSTRUCTION stage" (should be "phase")
-
-## Three-Phase Lifecycle
-
-### INCEPTION PHASE
-**Purpose**: Planning and architectural decisions  
-**Focus**: Determine WHAT to build and WHY  
-**Location**: `inception/` directory
-
-**Stages**:
-- Workspace Detection (ALWAYS)
-- Reverse Engineering (CONDITIONAL - Brownfield only)
-- Requirements Analysis (ALWAYS - Adaptive depth)
-- User Stories (CONDITIONAL)
-- Workflow Planning (ALWAYS)
-- Application Design (CONDITIONAL)
-- Units Generation (CONDITIONAL)
-
-**Outputs**: Requirements, user stories, architectural decisions, unit definitions
-
-### CONSTRUCTION PHASE
-**Purpose**: Detailed design and implementation  
-**Focus**: Determine HOW to build it  
-**Location**: `construction/` directory
-
-**Stages**:
-- Functional Design (CONDITIONAL, per-unit)
-- NFR Requirements (CONDITIONAL, per-unit)
-- NFR Design (CONDITIONAL, per-unit)
-- Infrastructure Design (CONDITIONAL, per-unit)
-- Code Generation (ALWAYS) — includes Part 1: Planning and Part 2: Generation
-- Build and Test (ALWAYS)
-
-**Outputs**: Design artifacts, NFR implementations, code, tests
-
-### OPERATIONS PHASE
-**Purpose**: Deployment and operational readiness  
-**Focus**: How to DEPLOY and RUN it  
-**Location**: `operations/` directory
-
-**Stages**:
-- Operations (PLACEHOLDER)
-
-**Outputs**: Build instructions, deployment guides, monitoring setup, verification procedures
-
----
-
-## Workflow Stages
-
-### Always-Execute Stages
-- **Workspace Detection**: Initial analysis of workspace state and project type
-- **Requirements Analysis**: Gathering requirements (depth varies based on complexity)
-- **Workflow Planning**: Creating execution plan for which phases to run
-- **Code Generation**: Single stage with two parts — Part 1 (Planning) creates detailed implementation plans, Part 2 (Generation) generates actual code based on plans and prior artifacts
-- **Build and Test**: Building all units and executing comprehensive testing
-
-### Conditional Stages
-- **Reverse Engineering**: Analyzing existing codebase (brownfield projects only)
-- **User Stories**: Creating user stories and personas (includes Story Planning and Story Generation)
-- **Application Design**: Designing application components, methods, business rules, and services
-- **Units Generation**: Decomposing the system into units of work (includes internal planning and generation sub-steps, plus per-unit design)
-- **Functional Design**: Technology-agnostic business logic design (per-unit)
-- **NFR Requirements**: Determining NFRs and selecting tech stack (per-unit)
-- **NFR Design**: Incorporating NFR patterns and logical components (per-unit)
-- **Infrastructure Design**: Mapping to actual infrastructure services (per-unit)
-
-## Application Design Terms
-
-- **Component**: A functional unit with specific responsibilities
-- **Method**: A function or operation within a component with defined business rules
-- **Business Rule**: Logic that governs method behavior and validation
-- **Service**: Orchestration layer that coordinates business logic across components
-- **Component Dependency**: Relationship and communication pattern between components
-
-## Architecture Terms (Infrastructure)
-
-### Unit of Work
-A logical grouping of user stories for development purposes. The term used during planning and decomposition.
-
-**Usage**: "We need to decompose the system into units of work"
-
-### Service
-An independently deployable component in a microservices architecture. Each service is a separate unit of work.
-
-**Usage**: "The Payment Service handles all payment processing"
-
-### Module
-A logical grouping of functionality within a single service or monolith. Modules are not independently deployable.
-
-**Usage**: "The authentication module within the User Service"
-
-### Component
-A reusable building block within a service or module. Components are classes, functions, or packages that provide specific functionality.
-
-**Usage**: "The EmailValidator component validates email addresses"
-
-## Terminology Guidelines
-
-### When to Use Each Term
-
-**Unit of Work**:
-- During the Units Generation stage
-- When discussing system decomposition
-- In planning documents and discussions
-- Example: "How should we decompose this into units of work?"
-
-**Service**:
-- When referring to independently deployable components
-- In microservices architecture contexts
-- In deployment and infrastructure discussions
-- Example: "The Order Service will be deployed to ECS"
-
-**Module**:
-- When referring to logical groupings within a service
-- In monolith architecture contexts
-- When discussing internal organization
-- Example: "The reporting module generates all reports"
-
-**Component**:
-- When referring to specific classes, functions, or packages
-- In design and implementation discussions
-- When discussing reusable building blocks
-- Example: "The DatabaseConnection component manages connections"
-
-## Stage Terminology
-
-### Planning vs Generation
-- **Planning**: Creating a plan with questions and checkboxes for execution
-- **Generation**: Executing the plan to create artifacts
-
-Examples (these are internal sub-steps within a single stage, not separate stages):
-- Story Planning → Story Generation (within User Stories stage)
-- Units Planning → Units Generation (within Units Generation stage)
-- Unit Design Planning → Unit Design Generation (within per-unit design)
-- NFR Planning → NFR Generation (within NFR Requirements stage)
-- Code Generation Part 1 (Planning) → Code Generation Part 2 (Generation)
-
-### Depth Levels
-- **Minimal**: Quick, focused execution for simple changes
-- **Standard**: Normal depth with standard artifacts for typical projects
-- **Comprehensive**: Full depth with all artifacts for complex/high-risk projects
-
-## Artifact Types
-
-### Plans
-Documents with checkboxes and questions that guide execution.
-- Located in `aidlc-docs/plans/`
-- Examples: `story-generation-plan.md`, `unit-of-work-plan.md`
-
-### Artifacts
-Generated outputs from executing plans.
-- Located in various `aidlc-docs/` subdirectories
-- Examples: `requirements.md`, `stories.md`, `design.md`
-
-### State Files
-Files tracking workflow progress and status.
-- `aidlc-state.md`: Overall workflow state
-- `audit.md`: Complete audit trail of all interactions
-
-## Common Abbreviations
-
-- **AI-DLC**: AI-Driven Development Life Cycle
-- **NFR**: Non-Functional Requirements
-- **UOW**: Unit of Work
-- **API**: Application Programming Interface
-- **CDK**: Cloud Development Kit (AWS)
+- **Plan vs implement** — planning produces documents; implementing produces code.
+  A stage never does both.
+- **Specs vs tasks** — specs describe behaviour and are durable; tasks describe work
+  and are transient.
+- **Handoff vs living documentation** — the handoff describes *this delivery*; living
+  documentation describes *the system as it now is*.
+- **Blocked vs stale** — blocked means waiting on a human or another team; stale
+  means something changed underneath approved work.
+- **Engine rules vs rule packs** — engine rules govern process, rule packs govern
+  craft. When they conflict, process comes from the engine, craft from the pack.

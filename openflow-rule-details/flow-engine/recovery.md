@@ -1,194 +1,89 @@
-# Recovery Commands and Mid-Flow Resume
+# Recovery, drift and staleness
 
-**Purpose**: Map user recovery commands to aidlc rules and OpenSpec skills. Always **confirm destructive changes** per `common/workflow-changes.md` before archiving, resetting steps, or regenerating artifacts.
-
-**Paths**: `openflow/state.json`, `openflow/changes/{ticket}/audit.md`, `openflow.yml`, per-repo `openspec/changes/{sub_ticket}/`.
-
----
-
-## Command Matrix (PLAN §3)
-
-| Situation / Command | aidlc rule | OpenSpec skill | Primary effect |
-|---------------------|------------|----------------|----------------|
-| `/openflow modify-step {area} -ticket {id}` | `workflow-changes.md` (restart stage) | `openspec-update-change` | Revise planning artifacts; may reset downstream steps |
-| `/openflow retry-step {N}` | `workflow-changes.md` (restart current / skipped) | `openspec-continue-change` | Resume implementation from last checkpoint |
-| Session interrupted mid-step | `error-handling.md` (partial completion) | `openspec-continue-change` | Resume without re-approving completed work |
-| Requirements changed after Step 2+ | `workflow-changes.md` (architectural change) | `openspec-update-change` | Keep proposal/specs/design/tasks coherent |
-| Artifact file corrupted / missing | `error-handling.md` (missing artifacts) | `openspec-new-change` | Regenerate change directory artifacts |
-
-Read the linked aidlc/OpenSpec skill files in full before acting.
+**Purpose.** Keep artifacts and code honest when something changes after approval.
+This is the mechanism that replaces "someone remembers to update the docs".
 
 ---
 
-## Universal Recovery Procedure
+## How drift works
 
-1. **Load state**: `openflow/state.json`, `audit.md`, current flow from `flow-loader.md`.
-2. **Identify** ticket: parent vs sub-ticket (`-ticket` flag).
-3. **Classify** severity (`error-handling.md`): corrupted/missing artifacts = Critical; retry = Medium/High.
-4. **Explain impact** to user (what will be redone, what is preserved).
-5. **Confirm** if destructive (archive, reset step, delete regen).
-6. **Execute** skill + state updates.
-7. **Log** full decision in `audit.md` with timestamp.
+1. Approving a stage records a **fingerprint** — a content hash of that stage's
+   artifacts.
+2. `openflow drift` recomputes fingerprints and compares.
+3. A stage whose own artifacts changed is **modified**.
+4. Every completed stage that `depends_on` a modified stage becomes **stale**, with
+   the upstream stage recorded as the cause.
+5. Stale stages surface in `openflow next` and `openflow status`, and the `no_drift`
+   check fails, so a work item cannot be archived while stale.
 
----
-
-## `/openflow modify-step {area} -ticket {id}`
-
-**Example**: `/openflow modify-step frontend -ticket PROD-5102`
-
-**Use when**: User found problems with an implementation doc or planning artifacts — not a simple code typo (use normal edit / apply-change for that).
-
-### Procedure
-
-1. **workflow-changes.md** — "Restarting current/previous stage":
-   - Ask what is wrong (doc scope, AC, design).
-   - Offer **Option A**: targeted `openspec-update-change` vs **Option B**: full restart (archive + redo step).
-2. Map `{area}` to step and repo:
-
-| area | Typical step | Sub-ticket key | Repo |
-|------|--------------|----------------|------|
-| `frontend` | 2 (doc) or 3 (impl) | frontend | frontend |
-| `backend` | 5 or 6 | backend | backend |
-| `context` | 4, 9, 10 | context | context |
-| `test` | 8 | test | test |
-
-3. If user targets **doc** (Steps 2, 4, 5): run **`openspec-update-change`** on `{repo}/openspec/changes/{id}/`.
-4. If user targets **impl** after doc change: confirm whether to reset step 3/6/7 downstream — **destructive** → explicit confirm.
-5. **Archive** old artifacts if restarting: copy to `.backup.{timestamp}` or OpenSpec archive per user choice.
-6. Update `state.json`: set affected `step_status` to `in_progress`; may lower `current_step` to modified step.
-7. Re-run **human gate** when step completes again.
-
-### Audit entry
-
-```markdown
-## Recovery — modify-step
-**Timestamp**: ...
-**Command**: modify-step frontend -ticket PROD-5102
-**Decision**: openspec-update-change (partial) | full restart
-**User confirmed**: yes
-**Steps reset**: 3, 7 → in_progress
+```bash
+openflow drift          # human readable
+openflow drift --json   # for agents
 ```
 
----
-
-## `/openflow retry-step {N}`
-
-**Example**: `/openflow retry-step 7`
-
-**Use when**: Step failed mid-implementation, tests flaky, or user wants to continue without redoing planning.
-
-### Procedure
-
-1. **workflow-changes.md** — restarting current stage without full doc regen when possible.
-2. Confirm step N matches `state.json.current_step` or user intentionally jumps — warn if N < current (may orphan later work).
-3. Set `step_status[N]` → `in_progress`; clear `blocked` if retrying after block.
-4. Load step N detail + run **`openspec-continue-change`** on the relevant sub-ticket change(s):
-   - Step 7 → frontend repo change (integration tasks).
-   - Step 3 → frontend; Step 6 → backend; Step 8 → test repo.
-5. Do not skip **code-generation.md** Part 1 if no plan exists for remaining work.
-6. On completion → `openspec-verify-change` (if impl step) → **human gate**.
+Run it after any hand edit, after re-fetching a changed work item, and before
+closeout.
 
 ---
 
-## Session Interrupted Mid-Step
+## The case this exists for
 
-**No command** — user returns later.
+The backend's contract changes after the frontend was planned against it.
 
-### Procedure
-
-1. `session-continuity.md`: welcome back, show `current_step`, last `audit.md` entry.
-2. `error-handling.md` — partial stage completion:
-   - List artifacts present vs expected for step.
-   - If `tasks.md` partially checked → **`openspec-continue-change`**.
-   - If no safe checkpoint → ask retry vs modify-step.
-3. Do not require re-approval for substeps already marked `completed` in state unless artifacts were rolled back.
-
----
-
-## Requirements Changed After Step 2
-
-**Trigger**: User says ticket scope/AC changed after frontend doc approved.
-
-### Procedure
-
-1. **workflow-changes.md** — "changing architectural decision" / restart previous stage impact analysis.
-2. Warn: backend doc, impl, tests may all need updates.
-3. Run **`openspec-update-change`** starting at earliest affected repo (often context + frontend proposal).
-4. Re-gate Step 2 (and 5 if backend doc existed).
-5. Reset `step_status` for steps > last replanned doc to `in_progress` or `pending` with confirm.
-
----
-
-## Corrupted or Missing Artifact
-
-**Symptoms**: Empty `tasks.md`, invalid YAML front matter, merge conflict markers, wrong ticket id in path.
-
-### Procedure
-
-1. **error-handling.md** — missing artifacts recovery:
-   - Attempt restore from git: `git checkout -- path` (user confirm).
-   - If unrecoverable → backup fragment to `*.corrupt.{timestamp}`.
-2. Run **`openspec-new-change`** (or `openspec-ff-change` if user wants speed) to regenerate planning artifacts for that sub-ticket.
-3. **Never** silently invent tasks — regenerated content must be re-approved at human gate.
-4. Update `audit.md` with cause and regeneration skill used.
-
----
-
-## Confirm Destructive Changes (Mandatory)
-
-Before any action that **deletes**, **archives**, or **rolls back** `current_step`, require explicit user confirmation quoting impact:
-
-- List steps reset
-- List repos affected
-- List files to archive
-- Time cost estimate (qualitative)
-
-Phrases like "yes, restart step 2" or `/openflow approve` on a recovery plan count as confirmation.
-
-**Do not proceed** on ambiguous "ok" when archive was mentioned.
-
----
-
-## OpenSpec Skill Quick Reference
-
-| Skill | Read when |
-|-------|-----------|
-| `openspec-continue-change` | retry-step, session interrupt, resume apply |
-| `openspec-update-change` | modify-step, requirements drift |
-| `openspec-new-change` | corrupted planning artifacts regenerate |
-| `openspec-verify-change` | before re-gating after recovery impl work |
-
-Skills live under `openspec-skills/` (vendored) and `skills/openflow-*` — read `SKILL.md` before invocation.
-
----
-
-## State After Recovery
-
-Always update:
-
-- `last_updated`
-- `step_status` for touched steps
-- `blocked` cleared or set with reason
-- optional `recovery_log[]` snippet in state for UI/CLI
-
-Example:
-
-```json
-"recovery_log": [
-  {
-    "at": "2026-07-25T03:00:00Z",
-    "command": "retry-step 7",
-    "skill": "openspec-continue-change"
-  }
-]
+```
+backend-plan artifacts edited
+        ↓ (depends_on chain)
+backend-build → stale
+integrate     → stale
+test-automation → stale
+handoff, sync-context → stale
 ```
 
+The next `openflow next` reports it. The agent re-checks the integration seam
+because the flow said so — the developer never has to announce "I changed the API,
+now update the frontend".
+
 ---
 
-## When to Escalate to Human Outside OpenFlow
+## Resolving stale work
 
-- Tracker parent ticket cancelled → block and document.
-- Repo access lost → Critical, cannot continue.
-- Conflicting sub-ticket IDs → Step 1 subtask collection again.
+For each stale stage, in flow order:
 
-Log all escalations in `audit.md`.
+1. Read what changed upstream: the modified artifacts, and their diff if available.
+2. Decide the direction and say it out loud:
+   - **Adapt downstream** — the upstream change is correct; update this stage.
+   - **Correct upstream** — the change was a mistake; revisit that stage instead.
+3. Update artifacts and code in place.
+4. Re-baseline:
+   ```bash
+   openflow approve --step <key> -m "revisited: <reason>"
+   ```
+5. Re-run `openflow drift`. Exit condition is a clean report, not "it compiles".
+
+Never clear staleness without doing the re-check.
+
+---
+
+## Other recovery situations
+
+| Situation | Action |
+|---|---|
+| Session interrupted mid-stage | Read what exists, report done/partial, continue from the first incomplete item |
+| Artifact deleted or corrupted | Regenerate that stage's artifact after confirming the loss, then re-approve |
+| State says complete, artifacts missing | Report both; revisit the stage rather than fabricating artifacts |
+| Artifacts exist, state says pending | Verify, then `openflow adopt <stage>` |
+| Work item changed | Update `context.md`, run `openflow drift`, revisit stale stages |
+| Wrong sub-item id | Move the artifact folder, `openflow start … --sub role=NEW`, then `openflow drift` |
+| Blocked externally | `openflow block "reason"`, then `openflow block --clear` |
+
+---
+
+## Rules
+
+1. **Confirm destructive actions.** List what will be lost before deleting or
+   regenerating anything.
+2. **Never hand-edit `openflow/state.json`.** Use the CLI; it keeps fingerprints and
+   the audit trail coherent.
+3. **Never bypass the Definition of Done** to finish. If `openflow check` fails on
+   context documentation, run the `sync-context` stage — that is the failure the
+   check was written to catch.

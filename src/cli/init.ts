@@ -1,90 +1,123 @@
 import {
-  mkdirSync,
-  writeFileSync,
+  cpSync,
   existsSync,
-  copyFileSync,
+  mkdirSync,
   readFileSync,
   readdirSync,
-  cpSync,
+  writeFileSync,
 } from "node:fs";
-import { resolve, dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join, resolve } from "node:path";
 import {
   DEFAULT_CONFIG_FILENAME,
   OPENFLOW_DIR,
   loadConfigFromFile,
 } from "../lib/config.js";
+import { getPackageRoot, listFlows } from "../lib/flow-loader.js";
+import { DEFAULT_CONVENTIONS, resolveAllRolePacks } from "../lib/rules.js";
 
-const PACKAGE_ROOT = resolve(
-  dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "..",
-);
+const PACKAGE_ROOT = getPackageRoot();
 
-export type AiTool = "cursor" | "copilot" | "windsurf" | "claude" | "unknown";
+export type AiTool = "cursor" | "copilot" | "windsurf" | "claude" | "codex" | "unknown";
 
 export function detectAiTool(cwd: string): AiTool {
   if (existsSync(resolve(cwd, ".cursor"))) return "cursor";
   if (existsSync(resolve(cwd, ".windsurf"))) return "windsurf";
   if (existsSync(resolve(cwd, ".claude")) || existsSync(resolve(cwd, "CLAUDE.md")))
     return "claude";
-  if (existsSync(resolve(cwd, ".github/copilot-instructions.md")))
-    return "copilot";
+  if (existsSync(resolve(cwd, ".codex"))) return "codex";
+  if (existsSync(resolve(cwd, ".github/copilot-instructions.md"))) return "copilot";
   return "unknown";
 }
 
-function exampleConfigPath(): string {
-  return join(PACKAGE_ROOT, "openflow.yml");
+function skillTargets(cwd: string, aiTool: AiTool): string[] {
+  const targets = [resolve(cwd, ".cursor", "skills")];
+  if (aiTool === "windsurf") targets.push(resolve(cwd, ".windsurf", "skills"));
+  if (aiTool === "claude") targets.push(resolve(cwd, ".claude", "skills"));
+  if (aiTool === "codex") targets.push(resolve(cwd, ".codex", "skills"));
+  return targets;
 }
 
-function installSkills(cwd: string, aiTool: AiTool): string[] {
-  const installed: string[] = [];
-  const targets: string[] = [];
-
-  // Always install into project .cursor/skills (Cursor / Agent skills)
-  targets.push(resolve(cwd, ".cursor", "skills"));
-  if (aiTool === "windsurf") {
-    targets.push(resolve(cwd, ".windsurf", "skills"));
-  }
-  if (aiTool === "claude") {
-    targets.push(resolve(cwd, ".claude", "skills"));
-  }
-
-  const skillRoots = [
-    join(PACKAGE_ROOT, "skills"), // openflow-* flow skills
-    join(PACKAGE_ROOT, "openspec-skills"), // vendored openspec-* skills
-  ];
-
-  for (const targetRoot of targets) {
+function installSkills(cwd: string, aiTool: AiTool): number {
+  const source = join(PACKAGE_ROOT, "skills");
+  if (!existsSync(source)) return 0;
+  let count = 0;
+  for (const targetRoot of skillTargets(cwd, aiTool)) {
     mkdirSync(targetRoot, { recursive: true });
-    for (const skillsSrc of skillRoots) {
-      if (!existsSync(skillsSrc)) continue;
-      for (const name of readdirSync(skillsSrc)) {
-        if (name === "README.md") continue;
-        const src = join(skillsSrc, name);
-        const dest = join(targetRoot, name);
-        cpSync(src, dest, { recursive: true });
-        installed.push(`${targetRoot}/${name}`);
-      }
+    for (const name of readdirSync(source)) {
+      if (name === "README.md") continue;
+      cpSync(join(source, name), join(targetRoot, name), { recursive: true });
+      count++;
     }
   }
-
-  return installed;
+  return count;
 }
 
-function installCursorRule(cwd: string): void {
+function installCursorRule(cwd: string): boolean {
   const core = join(PACKAGE_ROOT, "openflow-rules", "core.md");
-  if (!existsSync(core)) return;
+  if (!existsSync(core)) return false;
   const rulesDir = resolve(cwd, ".cursor", "rules");
   mkdirSync(rulesDir, { recursive: true });
   const body = `---
-description: OpenFlow SDLC orchestration — always follow when user runs OpenFlow skills
+description: OpenFlow workflow orchestration — follow whenever an OpenFlow delivery is active
 alwaysApply: true
 ---
 
 ${readFileSync(core, "utf8")}
 `;
   writeFileSync(resolve(rulesDir, "openflow.mdc"), body, "utf8");
+  return true;
+}
+
+function configTemplate(flow: string, name: string): string {
+  return `version: 2
+
+project:
+  name: ${name}
+  flow: ${flow} # default only — a skill or --flow can pick another flow per ticket
+
+# Where work items come from. jira | linear | github | mcp | file | manual | none
+# Provider-backed intake is executed by your agent through whatever MCP/CLI you
+# already have; \`file\` is read directly by the CLI.
+intake:
+  provider: manual
+  # path: tickets/{ticket}.md        # provider: file
+  # instructions: "Use our internal tracker MCP tool workitem.get"
+
+# Repo roles. Add or rename freely — the engine has no fixed roles.
+repos:
+  context: ../context-docs
+  # frontend: ../web
+  # backend: ../api
+  # test: ../e2e
+
+# Role whose repo stores living documentation.
+context_role: context
+
+branching:
+  pattern: "feature/{ticket}-{slug}"
+
+artifacts:
+  dir: openflow/changes # per-repo folder for generated plan/spec/task artifacts
+
+# Your engineering rules per role. Point these anywhere; if omitted, OpenFlow
+# discovers conventions such as .openflow/rules/frontend.md or {repo}/AGENTS.md.
+rules:
+  discover: true
+  packs: {}
+  # packs:
+  #   frontend:
+  #     - .openflow/rules/frontend.md
+  #     - skill:my-design-system
+  #   backend:
+  #     - ../api/AGENTS.md
+
+# Opt-in engineering extensions (any name your rules define).
+extensions: {}
+
+# Executable Definition of Done. Leave empty to use the flow's defaults
+# (every step approved, context docs present, no unresolved drift).
+dod: []
+`;
 }
 
 export interface InitOptions {
@@ -98,7 +131,6 @@ export function runInit(options: InitOptions = {}): void {
   const cwd = options.cwd ?? process.cwd();
   const configPath = resolve(cwd, DEFAULT_CONFIG_FILENAME);
   const openflowDir = resolve(cwd, OPENFLOW_DIR);
-  const changesDir = resolve(openflowDir, "changes");
 
   if (existsSync(configPath) && !options.force) {
     throw new Error(
@@ -106,90 +138,47 @@ export function runInit(options: InitOptions = {}): void {
     );
   }
 
-  mkdirSync(changesDir, { recursive: true });
-
-  let configContent: string;
-  if (existsSync(exampleConfigPath())) {
-    configContent = readFileSync(exampleConfigPath(), "utf8");
-    if (options.flow) {
-      configContent = configContent.replace(
-        /flow:\s*v5-workflow/,
-        `flow: ${options.flow}`,
-      );
-    }
-    if (options.projectName) {
-      configContent = configContent.replace(
-        /name:\s*example/,
-        `name: ${options.projectName}`,
-      );
-    }
-  } else {
-    const flow = options.flow ?? "v5-workflow";
-    const name = options.projectName ?? "my-project";
-    configContent = `project:\n  name: ${name}\n  flow: ${flow}\ntracker:\n  provider: jira\nrepos:\n  frontend: ../frontend\n  backend: ../backend\n  context: ../context\n  test: ../test\nbranching:\n  pattern: "feature/{ticket-id}-{slug}"\nextensions:\n  security: false\n  testing: false\n  resiliency: false\n`;
-  }
+  mkdirSync(resolve(openflowDir, "changes"), { recursive: true });
+  mkdirSync(resolve(cwd, ".openflow/rules"), { recursive: true });
+  mkdirSync(resolve(cwd, ".openflow/flows"), { recursive: true });
 
   const aiTool = detectAiTool(cwd);
-  if (!configContent.includes("ai_tool:")) {
-    configContent = `${configContent.trimEnd()}\nai_tool: ${aiTool}\n`;
+  const flow = options.flow ?? "delivery-flow";
+  const name = options.projectName ?? "my-project";
+  const body = `${configTemplate(flow, name)}\nai_tool: ${aiTool}\n`;
+  writeFileSync(configPath, body, "utf8");
+
+  const templates = join(PACKAGE_ROOT, "templates");
+  if (existsSync(templates)) {
+    cpSync(templates, resolve(openflowDir, "templates"), { recursive: true });
   }
 
-  // Clarify: project.flow is only the default; skills override per ticket
-  if (!configContent.includes("# default flow")) {
-    configContent = configContent.replace(
-      /flow:\s*(\S+)/,
-      "flow: $1  # default only — pick flow per ticket via /v5-workflow, /backend-flow, etc.",
-    );
-  }
+  const skills = installSkills(cwd, aiTool);
+  const ruleInstalled = installCursorRule(cwd);
+  const config = loadConfigFromFile(configPath);
 
-  writeFileSync(configPath, configContent, "utf8");
-
-  const installed = installSkills(cwd, aiTool);
-  installCursorRule(cwd);
-
-  const rulesHint = resolve(openflowDir, "RULES-HINT.md");
-  writeFileSync(
-    rulesHint,
-    `# OpenFlow — once per project
-
-\`openflow init\` is **once**. Day-to-day use **skills** in Cursor / Windsurf / Claude:
-
-| Skill | When |
-|-------|------|
-| \`/openflow-v5-workflow PROD-5100\` | Full FE+BE+context+test |
-| \`/openflow-backend-flow PROD-5103\` | Backend-only |
-| \`/openflow-frontend-flow PROD-5102\` | Frontend-only |
-| \`/openflow-mobile-flow APP-44\` | Mobile |
-| \`/openflow-approve\` | Advance past human gate |
-| \`/openflow-status\` | Progress |
-| \`/openflow-archive PROD-5100\` | Done |
-| \`/openflow-modify-step …\` | Redo from a step forward |
-
-Edit \`openflow.yml\` for repos + tracker. Do not re-init to change flow.
-`,
-    "utf8",
-  );
-
-  const contextTemplate = join(PACKAGE_ROOT, "templates", "context.md");
-  if (existsSync(contextTemplate)) {
-    mkdirSync(resolve(openflowDir, "templates"), { recursive: true });
-    copyFileSync(
-      contextTemplate,
-      resolve(openflowDir, "templates", "context.md"),
-    );
-  }
-
-  console.log(`Created ${DEFAULT_CONFIG_FILENAME}`);
-  console.log(`Created ${OPENFLOW_DIR}/ (changes/, RULES-HINT.md)`);
+  console.log(`Created ${DEFAULT_CONFIG_FILENAME} (flow: ${flow})`);
+  console.log(`Created ${OPENFLOW_DIR}/ and .openflow/{rules,flows}/`);
   console.log(`Detected AI tool: ${aiTool}`);
-  if (installed.length) {
-    console.log(`Installed ${installed.length} skill copies under .cursor/skills/ (and tool-specific dirs if any)`);
-  }
-  if (existsSync(resolve(cwd, ".cursor/rules/openflow.mdc"))) {
-    console.log("Installed .cursor/rules/openflow.mdc");
-  }
-  console.log("Day-to-day: /openflow-v5-workflow, /openflow-backend-flow, /openflow-approve, …");
+  if (skills) console.log(`Installed ${skills} skill copies`);
+  if (ruleInstalled) console.log("Installed .cursor/rules/openflow.mdc");
 
-  loadConfigFromFile(configPath);
-  console.log("Configuration validated.");
+  console.log("\nAvailable flows:");
+  for (const entry of listFlows(cwd)) {
+    console.log(`  ${entry.id}`);
+  }
+
+  const packs = resolveAllRolePacks(cwd, config);
+  console.log("\nProject rules discovered:");
+  for (const pack of packs) {
+    const found = pack.sources.length
+      ? pack.sources.map((source) => source.ref).join(", ")
+      : "(none yet)";
+    console.log(`  ${pack.role}: ${found}`);
+  }
+  console.log("\nDrop your own rules at any of these paths (per role):");
+  for (const convention of DEFAULT_CONVENTIONS) {
+    console.log(`  ${convention}`);
+  }
+  console.log("\nNext: edit openflow.yml (repos + intake + rules), then `openflow start <ticket>`.");
 }
