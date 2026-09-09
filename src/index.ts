@@ -48,8 +48,8 @@ program
   .command("init")
   .description("Scaffold openflow.md, skills and rules")
   .option("-f, --force", "Overwrite existing openflow.md")
-  .option("--flow <id>", "Default flow id")
-  .option("--name <name>", "Project name")
+  .option("--flow <id>", "Flow id (default: default)")
+  .option("--name <name>", "Project name (default: this folder)")
   .action((opts) =>
     guard(() =>
       runInit({ force: opts.force, flow: opts.flow, projectName: opts.name }),

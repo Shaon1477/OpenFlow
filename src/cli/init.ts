@@ -6,7 +6,7 @@ import {
   readdirSync,
   writeFileSync,
 } from "node:fs";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { OPENFLOW_DIR, PROJECT_MD_FILENAME, loadConfig } from "../lib/config.js";
 import { loadFlowDefinition, getPackageRoot, listFlows } from "../lib/flow-loader.js";
 import { DEFAULT_PROJECT_MD } from "../lib/project-md.js";
@@ -158,7 +158,7 @@ export function runInit(options: InitOptions = {}): void {
 
   const aiTool = detectAiTool(cwd);
   const flow = options.flow ?? "default";
-  const name = options.projectName ?? "my-app";
+  const name = options.projectName ?? basename(cwd);
   const md = DEFAULT_PROJECT_MD.replace("workflow='default'", `workflow='${flow}'`).replace(
     "name='my-app'",
     `name='${name}'`,

@@ -1,12 +1,19 @@
 {
-  "name": "openflow",
+  "name": "openflow-engine",
   "version": "0.2.0",
-  "description": "Workflow orchestration for AI-assisted delivery: composable stages, human gates, project-owned rules, drift detection",
+  "description": "Governed AI delivery CLI: stages, human gates, project rules, drift",
   "type": "module",
   "bin": {
     "openflow": "./bin/openflow"
   },
   "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "files": [
     "bin",
     "dist",
@@ -18,16 +25,26 @@
     "openflow-rule-details",
     "skills",
     "examples",
+    "README.md",
+    "LICENSE",
     "ATTRIBUTION.md"
   ],
   "license": "MIT",
+  "keywords": [
+    "openflow",
+    "cli",
+    "ai",
+    "workflow",
+    "cursor"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build": "tsc",
     "smoke": "node scripts/smoke.mjs",
-    "prepublishOnly": "npm run build"
-  },
-  "engines": {
-    "node": ">=20"
+    "prepublishOnly": "npm run build",
+    "pack:check": "npm run build && npm pack --dry-run"
   },
   "dependencies": {
     "commander": "^12.1.0",
