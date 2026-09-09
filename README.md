@@ -6,35 +6,18 @@ Requires Node.js 20+.
 
 ## Install
 
-From this folder (not on the public npm registry yet — the name `openflow` is taken):
+Node.js 20+. Anyone installs from GitHub (not npm):
 
 ```bash
-cd OpenFlow
-npm install
-npm run build
-npm install -g .
-```
-
-Check:
-
-```bash
+npm install -g github:Shaon1477/OpenFlow
 openflow --help
 ```
 
-In a product repo you can also:
-
-```bash
-npm install -D /absolute/path/to/OpenFlow
-npx openflow init
-```
-
-Uninstall the global CLI: `npm uninstall -g openflow-engine`.
+Update: run the same command again. Uninstall: `npm uninstall -g openflow-engine`.
 
 ## Use (one ticket)
 
-Run this in the workspace that owns frontend, backend, and docs (or a parent of those repos).
-
-**Once**
+In **their product workspace** (parent of frontend / backend / docs), once:
 
 ```bash
 openflow init

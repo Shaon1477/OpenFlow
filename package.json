@@ -29,6 +29,14 @@
     "LICENSE",
     "ATTRIBUTION.md"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Shaon1477/OpenFlow.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Shaon1477/OpenFlow/issues"
+  },
+  "homepage": "https://github.com/Shaon1477/OpenFlow#readme",
   "license": "MIT",
   "keywords": [
     "openflow",
@@ -43,6 +51,7 @@
   "scripts": {
     "build": "tsc",
     "smoke": "node scripts/smoke.mjs",
+    "prepare": "npm run build",
     "prepublishOnly": "npm run build",
     "pack:check": "npm run build && npm pack --dry-run"
   },
