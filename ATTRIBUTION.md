@@ -14,6 +14,11 @@ in `openflow-rule-details/` are descended from them:
 - **Spec-driven change workflows** — the idea of a change carrying a proposal,
   requirement specs with scenarios, a design, and a task list, then folding the
   delta back into living documentation.
+- **[Superpowers](https://github.com/obra/superpowers)** (MIT, obra / Prime Radiant) —
+  systematic debugging, verification-before-completion, and pre-gate code review.
+  OpenFlow ships adapted copies under `skills/` and loads them only on
+  implement/verify stages. We do **not** adopt Superpowers brainstorming, plan
+  execution, or subagent-driven development — those conflict with OpenFlow gates.
 
 ## What OpenFlow does differently
 

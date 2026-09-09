@@ -41,6 +41,10 @@ steps:
     human_gate: true
     verify: true
     use: default
+    skills:
+      - systematic-debugging
+      - verification-before-completion
+      - openflow-code-review
     rules:
       - construction/code-generation.md
 
@@ -64,6 +68,10 @@ steps:
     human_gate: true
     verify: true
     use: default
+    skills:
+      - systematic-debugging
+      - verification-before-completion
+      - openflow-code-review
     rules:
       - construction/code-generation.md
 

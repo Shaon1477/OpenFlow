@@ -33,3 +33,6 @@ helpers write that entity. Never `QuerySet.update()` for order/trip **state**
 GET only. Missing filter = no restriction. Absent `sort_field` ⇒ silent
 `default_sort` (+ `id`) for stable pages — do not invent UI sort metadata.
 Group by: `list_response(..., grouped=True, groupBy=…, groups=…)`.
+
+On bugs use `systematic-debugging`. Before the gate: `verification-before-completion`
+and `openflow-code-review`. Still wait for `openflow approve`.

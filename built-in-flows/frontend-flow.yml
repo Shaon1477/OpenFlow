@@ -46,7 +46,7 @@ steps:
     depends_on: [frontend-plan]
     human_gate: true
     verify: true
-    skills: [openflow-run]
+    skills: [openflow-run, systematic-debugging, verification-before-completion, openflow-code-review]
     rules:
       - construction/code-generation.md
       - extensions/security/baseline/security-baseline.md
@@ -72,7 +72,7 @@ steps:
     optional: true
     human_gate: true
     verify: true
-    skills: [openflow-run]
+    skills: [openflow-run, systematic-debugging, verification-before-completion]
     rules:
       - construction/build-and-test.md
 

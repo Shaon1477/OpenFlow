@@ -465,6 +465,9 @@ Installed under `.cursor/skills/` (and Claude / Windsurf / Codex when detected):
 | `/openflow-cr-frontend-default` | Change request, then work that stage immediately |
 | `/openflow-status` | Where we are, what is stale |
 | `/openflow-archive` | Close out after DoD passes |
+| `systematic-debugging` | On implement/verify — root cause before a fix |
+| `verification-before-completion` | On implement/verify — run tests before claiming done |
+| `openflow-code-review` | On implement/integrate — review vs plan, then wait for approve |
 
 ---
 

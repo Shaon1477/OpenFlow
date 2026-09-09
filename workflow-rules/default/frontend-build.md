@@ -28,3 +28,6 @@ Canonical: `teq-frontend-v5/AGENTS.md`.
 - `any`, modules importing modules, Pinia as a server cache, Keen bracket params,
   default “all selected” filter chips, sending sort on first list load,
   machine-translating locales, wrapping PrimeVue just to narrow props.
+
+On bugs use `systematic-debugging`. Before the gate: `verification-before-completion`
+and `openflow-code-review`. Still wait for `openflow approve`.

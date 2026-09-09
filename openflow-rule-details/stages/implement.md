@@ -39,6 +39,8 @@ review it. Do not write product code before that mini-review.
 2. Commit in logical groups; reference the sub-item id in the message.
 3. Run the repo's own lint, build and test commands (the rule pack should name
    them; otherwise infer from the repo's scripts) and fix what you broke.
+   Bugs: `/systematic-debugging` (root cause first). Before the gate:
+   `/openflow-code-review` against the approved plan.
 4. Honour every enabled extension as blocking, not advisory.
 5. Do not edit the plan artifacts to match the code. If the design turns out to
    be wrong, stop, say so, and revisit the plan stage — that path keeps the docs
@@ -48,7 +50,9 @@ review it. Do not write product code before that mini-review.
 
 ## VERIFY (when the manifest sets `verify: true`)
 
-Before presenting the gate, check three dimensions and report each explicitly:
+Follow `/verification-before-completion` before offering the gate: run the real
+lint/test/build command in this turn and cite the output. Then check three
+dimensions and report each explicitly:
 
 | Dimension | Question |
 |---|---|

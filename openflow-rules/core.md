@@ -37,6 +37,15 @@ any blocker, and anything that went stale. Then:
 5. Load the artifacts of each `depends_on` stage.
 6. Execute that one stage. Stop at its gate.
 
+If the manifest lists **skills**, load those `SKILL.md` files too. They are craft
+(debug, verify, review) for *this* stage. They never replace `openflow next` or
+`openflow approve`.
+
+Do **not** run Superpowers `brainstorming`, `writing-plans`, `executing-plans`,
+or `subagent-driven-development` as a parallel pipeline — those skip OpenFlow
+gates. Optional Cursor plugin install is fine; the flow YAML is what the engine
+loads.
+
 If there is no state yet: `openflow-rule-details/inception/workspace-detection.md`,
 then `common/welcome-message.md`. If there is: `common/session-continuity.md`.
 
@@ -151,6 +160,8 @@ Never hand-edit `openflow/state.json`. Use the CLI.
 
 Skills: `/openflow-start`, `/openflow-run`, `/openflow-approve`, `/openflow-status`,
 `/openflow-revisit`, `/openflow-adopt`, `/openflow-rules`, `/openflow-archive`.
+On implement/verify stages the flow also lists `systematic-debugging`,
+`verification-before-completion`, `openflow-code-review`.
 
 ---
 

@@ -48,6 +48,10 @@ steps:
     depends_on: [frontend-plan]
     human_gate: true
     verify: true
+    skills:
+      - systematic-debugging
+      - verification-before-completion
+      - openflow-code-review
     rules:
       - construction/code-generation.md
       - extensions/security/baseline/security-baseline.md
@@ -85,6 +89,10 @@ steps:
     depends_on: [backend-plan]
     human_gate: true
     verify: true
+    skills:
+      - systematic-debugging
+      - verification-before-completion
+      - openflow-code-review
     rules:
       - construction/code-generation.md
       - extensions/security/baseline/security-baseline.md
@@ -98,6 +106,10 @@ steps:
     depends_on: [frontend-build, backend-build]
     human_gate: true
     verify: true
+    skills:
+      - systematic-debugging
+      - verification-before-completion
+      - openflow-code-review
     rules:
       - construction/build-and-test.md
       - extensions/resiliency/baseline/resiliency-baseline.md
@@ -110,6 +122,9 @@ steps:
     depends_on: [test-cases, integrate]
     human_gate: true
     verify: true
+    skills:
+      - systematic-debugging
+      - verification-before-completion
     rules:
       - construction/build-and-test.md
       - extensions/testing/property-based/property-based-testing.md

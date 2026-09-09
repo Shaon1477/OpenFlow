@@ -18,3 +18,6 @@ Wire SPA to v4papi against the real contract. Follow
    legacy view.
 
 Fix the mismatch in the owning repo; do not paper over it in the other layer.
+
+On a contract mismatch: `systematic-debugging` (which layer?). Before the gate:
+`verification-before-completion` and `openflow-code-review`.

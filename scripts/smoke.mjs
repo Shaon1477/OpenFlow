@@ -52,6 +52,9 @@ try {
   check("start-default skill installed", existsSync(join(proj, ".cursor/skills/openflow-start-default/SKILL.md")));
   check("cr-frontend-default skill installed", existsSync(join(proj, ".cursor/skills/openflow-cr-frontend-default/SKILL.md")));
   check("start-v6 skill installed", existsSync(join(proj, ".cursor/skills/openflow-start-v6/SKILL.md")));
+  check("systematic-debugging skill installed", existsSync(join(proj, ".cursor/skills/systematic-debugging/SKILL.md")));
+  check("verification skill installed", existsSync(join(proj, ".cursor/skills/verification-before-completion/SKILL.md")));
+  check("code-review skill installed", existsSync(join(proj, ".cursor/skills/openflow-code-review/SKILL.md")));
   check("workflow-rules copied", existsSync(join(proj, ".openflow/workflow-rules/default/frontend-plan.md")));
 
   writeFileSync(

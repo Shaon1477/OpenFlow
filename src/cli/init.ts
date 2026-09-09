@@ -40,9 +40,10 @@ function stageWork(): string {
 
 1. \`openflow next --json\`
 2. Load \`workflow_rule\` (this team's per-step playbook), then the stage protocol, engine rules, and project rule packs.
-3. Ask in chat if anything is missing (Jira docs, Figma/MCP, screens, instruction).
-4. Do exactly this one stage. Stop at the gate.
-5. Tell the user to \`/openflow-approve\`. Never self-approve. Never start the next stage in this turn.`;
+3. If \`openflow next --json\` lists \`skills\`, load those (debug / verify / review). Do not run Superpowers brainstorming or executing-plans — they skip OpenFlow gates.
+4. Ask in chat if anything is missing (Jira docs, Figma/MCP, screens, instruction).
+5. Do exactly this one stage. Stop at the gate.
+6. Tell the user to \`/openflow-approve\`. Never self-approve. Never start the next stage in this turn.`;
 }
 
 function startSkillBody(flowId: string, short: string): string {

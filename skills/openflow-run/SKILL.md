@@ -28,7 +28,7 @@ It tells you:
 | `step.repos` | The only repos you may write to |
 | `engine_rules` | OpenFlow's process/discipline rules to load |
 | `rule_packs` | **This project's own engineering rules for the role** |
-| `skills` | Extra skills to run |
+| `skills` | Extra skills to run **this stage** (debug / verify / review). Load them. Do not treat them as permission to skip the gate. |
 | `artifacts` | The exact paths this stage owns |
 | `stale` | Completed work invalidated by an upstream change |
 | `intake` | How to read the work item (analyze stage only) |

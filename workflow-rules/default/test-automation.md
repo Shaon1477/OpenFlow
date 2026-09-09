@@ -27,4 +27,5 @@ make test-v5-e2e
 - PrimeVue dialogs, not v3 full-page forms.
 - `npm run lint` / `type-check` before done.
 
+On failures: `systematic-debugging`. Before the gate: `verification-before-completion`.
 Do not add new coverage in the v3 `tests/` folder for v5 SPA work.
