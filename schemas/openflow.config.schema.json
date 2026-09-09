@@ -1,0 +1,163 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://openflow.dev/schemas/openflow.config.schema.json",
+  "title": "OpenFlow Project Configuration",
+  "type": "object",
+  "required": ["project", "repos"],
+  "additionalProperties": true,
+  "properties": {
+    "version": { "type": "integer", "minimum": 1, "default": 2 },
+    "project": {
+      "type": "object",
+      "required": ["name", "flow"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "flow": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Flow id (built-in or .openflow/flows/<id>.yml) or a path to a flow YAML"
+        }
+      }
+    },
+    "intake": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "provider": {
+          "type": "string",
+          "minLength": 1,
+          "description": "jira | linear | github | mcp | file | manual | none, or a project-specific name"
+        },
+        "path": {
+          "type": "string",
+          "description": "Work item file template for provider: file, e.g. tickets/{ticket}.md"
+        },
+        "instructions": {
+          "type": "string",
+          "description": "Extra guidance for the agent when fetching the work item"
+        }
+      }
+    },
+    "tracker": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Legacy alias for intake; provider is mapped to intake.provider",
+      "properties": { "provider": { "type": "string" } }
+    },
+    "repos": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "type": "string", "minLength": 1 },
+      "description": "Role name to repo path. Roles are arbitrary."
+    },
+    "context_role": {
+      "type": "string",
+      "minLength": 1,
+      "default": "context",
+      "description": "Role whose repo holds living documentation"
+    },
+    "branching": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pattern": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Branch template; supports {ticket} and {slug}"
+        }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dir": {
+          "type": "string",
+          "minLength": 1,
+          "default": "openflow/changes",
+          "description": "Per-repo directory holding generated stage artifacts"
+        },
+        "incoming": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              { "type": "string", "minLength": 1 },
+              { "type": "array", "items": { "type": "string", "minLength": 1 } }
+            ]
+          },
+          "description": "Already-written docs keyed by stage key (analyze), kind (plan), or role (frontend). A directory is scanned for filenames containing the ticket id. Used by `openflow adopt` so --path is optional."
+        }
+      }
+    },
+    "rules": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "packs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Markdown file, directory of markdown, or skill:<name>"
+            }
+          },
+          "description": "Role to project rule sources"
+        },
+        "discover": {
+          "type": "boolean",
+          "default": true,
+          "description": "Search filename conventions when a role has no configured pack"
+        },
+        "conventions": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Override the discovery list; supports {role} and {repo}"
+        }
+      }
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": { "type": "boolean" },
+      "description": "Opt-in engineering extensions by name"
+    },
+    "dod": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/dodCheck" },
+      "description": "Executable Definition of Done; empty means flow defaults"
+    },
+    "ai_tool": { "type": "string" }
+  },
+  "definitions": {
+    "dodCheck": {
+      "type": "object",
+      "required": ["id", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": [
+            "file_exists",
+            "file_contains",
+            "tasks_complete",
+            "step_completed",
+            "no_drift",
+            "command"
+          ]
+        },
+        "path": {
+          "type": "string",
+          "description": "Path template; supports {ticket}, {artifacts_dir}, {repo:<role>}"
+        },
+        "text": { "type": "string" },
+        "step": { "type": "string", "description": "Stage key for step_completed" },
+        "run": { "type": "string", "description": "Shell command for type: command" },
+        "optional": { "type": "boolean", "default": false }
+      }
+    }
+  }
+}

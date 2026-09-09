@@ -1,0 +1,114 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://openflow.dev/schemas/state.schema.json",
+  "title": "OpenFlow State",
+  "description": "openflow/state.json — written and read only by the CLI",
+  "type": "object",
+  "required": ["version", "tickets"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 2 },
+    "active_ticket": { "type": ["string", "null"] },
+    "ai_tool": { "type": "string" },
+    "tickets": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/definitions/ticket" }
+    }
+  },
+  "definitions": {
+    "ticket": {
+      "type": "object",
+      "required": ["title", "status", "flow", "cursor", "started_at", "steps"],
+      "additionalProperties": true,
+      "properties": {
+        "title": { "type": "string" },
+        "status": { "enum": ["active", "blocked", "done", "archived"] },
+        "flow": { "type": "string" },
+        "cursor": { "type": "string", "description": "Current stage key" },
+        "started_at": { "type": "string", "format": "date-time" },
+        "completed_at": { "type": "string", "format": "date-time" },
+        "context_file": { "type": "string" },
+        "audit_file": { "type": "string" },
+        "sub_tickets": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Role to sub-item id"
+        },
+        "intake": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "provider": { "type": "string" },
+            "resolved": { "type": "boolean" },
+            "source": { "type": "string" }
+          }
+        },
+        "extensions": {
+          "type": "object",
+          "additionalProperties": { "type": "boolean" }
+        },
+        "branches": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "blockers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["reason", "since"],
+            "properties": {
+              "reason": { "type": "string" },
+              "step": { "type": "string" },
+              "since": { "type": "string", "format": "date-time" },
+              "cleared_at": { "type": "string", "format": "date-time" }
+            }
+          }
+        },
+        "steps": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/stepRecord" }
+        }
+      }
+    },
+    "stepRecord": {
+      "type": "object",
+      "required": ["status"],
+      "additionalProperties": true,
+      "properties": {
+        "status": {
+          "enum": [
+            "pending",
+            "in_progress",
+            "awaiting_approval",
+            "completed",
+            "skipped",
+            "blocked"
+          ]
+        },
+        "started_at": { "type": "string", "format": "date-time" },
+        "completed_at": { "type": "string", "format": "date-time" },
+        "approved_at": { "type": "string", "format": "date-time" },
+        "artifacts": { "type": "array", "items": { "type": "string" } },
+        "fingerprint": {
+          "type": "string",
+          "description": "Content hash of artifacts at approval; drift baseline"
+        },
+        "fingerprint_at": { "type": "string", "format": "date-time" },
+        "external": {
+          "type": "boolean",
+          "description": "Artifacts authored outside OpenFlow and adopted"
+        },
+        "note": { "type": "string" },
+        "stale": {
+          "type": ["object", "null"],
+          "required": ["reason", "since"],
+          "properties": {
+            "reason": { "type": "string" },
+            "since": { "type": "string", "format": "date-time" },
+            "upstream": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    }
+  }
+}

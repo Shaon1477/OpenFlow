@@ -1,0 +1,136 @@
+id: mobile-flow
+name: Mobile Delivery
+description: >
+  Mobile client plus service work. Shows a non-web role composed from the same
+  stage kinds — copy this to invent roles like desktop, cli, or data.
+version: "2.0"
+roles: [mobile, backend, context, test]
+
+steps:
+  - key: analyze
+    name: Analyze work item
+    kind: analyze
+    repos: [mobile, backend, context, test]
+    rule_packs: [mobile, backend, context, test]
+    human_gate: true
+    artifacts:
+      - openflow/changes/{ticket}/context.md
+    skills: [openflow-run]
+    rules:
+      - common/session-continuity.md
+      - common/depth-levels.md
+      - common/overconfidence-prevention.md
+      - common/question-format-guide.md
+      - inception/workspace-detection.md
+      - inception/requirements-analysis.md
+      - inception/workflow-planning.md
+      - intake/work-item-sources.md
+      - intake/work-item-schema.md
+      - intake/sub-items.md
+
+  - key: mobile-plan
+    name: Mobile implementation doc
+    kind: plan
+    role: mobile
+    repos: [mobile]
+    depends_on: [analyze]
+    human_gate: true
+    skills: [openflow-run]
+    rules:
+      - common/depth-levels.md
+      - construction/functional-design.md
+
+  - key: backend-plan
+    name: Backend implementation doc
+    kind: plan
+    role: backend
+    repos: [backend]
+    depends_on: [analyze, mobile-plan]
+    optional: true
+    human_gate: true
+    skills: [openflow-run]
+    rules:
+      - construction/functional-design.md
+      - construction/nfr-requirements.md
+
+  - key: backend-build
+    name: Implement backend
+    kind: implement
+    role: backend
+    repos: [backend]
+    depends_on: [backend-plan]
+    optional: true
+    human_gate: true
+    verify: true
+    skills: [openflow-run, systematic-debugging, verification-before-completion, openflow-code-review]
+    rules:
+      - construction/code-generation.md
+
+  - key: mobile-build
+    name: Implement mobile client
+    kind: implement
+    role: mobile
+    repos: [mobile]
+    depends_on: [mobile-plan]
+    human_gate: true
+    verify: true
+    skills: [openflow-run, systematic-debugging, verification-before-completion, openflow-code-review]
+    rules:
+      - construction/code-generation.md
+      - extensions/security/baseline/security-baseline.md
+
+  - key: integrate
+    name: Integrate client and services
+    kind: integrate
+    role: mobile
+    repos: [mobile, backend]
+    depends_on: [mobile-build, backend-build]
+    human_gate: true
+    verify: true
+    skills: [openflow-run, systematic-debugging, verification-before-completion, openflow-code-review]
+    rules:
+      - construction/build-and-test.md
+      - extensions/resiliency/baseline/resiliency-baseline.md
+
+  - key: test-cases
+    name: Write test cases
+    kind: test-cases
+    role: context
+    repos: [context]
+    depends_on: [analyze, mobile-plan]
+    human_gate: true
+    skills: [openflow-run]
+    rules:
+      - inception/requirements-analysis.md
+
+  - key: test-automation
+    name: Automate tests
+    kind: test-automation
+    role: test
+    repos: [test]
+    depends_on: [test-cases, integrate]
+    human_gate: true
+    verify: true
+    skills: [openflow-run, systematic-debugging, verification-before-completion]
+    rules:
+      - construction/build-and-test.md
+
+  - key: handoff
+    name: Handoff document
+    kind: handoff
+    role: context
+    repos: [context]
+    depends_on: [integrate, test-automation]
+    human_gate: true
+    skills: [openflow-run]
+    rules: []
+
+  - key: sync-context
+    name: Update living context
+    kind: sync-context
+    role: context
+    repos: [context]
+    depends_on: [handoff]
+    human_gate: true
+    skills: [openflow-run, openflow-archive]
+    rules: []
