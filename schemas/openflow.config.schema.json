@@ -77,6 +77,16 @@
           "minLength": 1,
           "default": "openflow/changes",
           "description": "Per-repo directory holding generated stage artifacts"
+        },
+        "incoming": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              { "type": "string", "minLength": 1 },
+              { "type": "array", "items": { "type": "string", "minLength": 1 } }
+            ]
+          },
+          "description": "Already-written docs keyed by stage key (analyze), kind (plan), or role (frontend). A directory is scanned for filenames containing the ticket id. Used by `openflow adopt` so --path is optional."
         }
       }
     },

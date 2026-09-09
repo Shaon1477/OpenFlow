@@ -126,6 +126,7 @@ to close on failure unless `--force`, which is audited.
 | Path | Contents |
 |---|---|
 | `openflow.yml` | Project configuration |
+| `openflow-directories.md` | Where existing Jira / frontend / backend / context docs live |
 | `openflow/state.json` | Cursor, sub-items, fingerprints, staleness, blockers |
 | `openflow/changes/{ticket}/` | `context.md`, `questions.md`, `audit.md`, plans |
 | `openflow/archive/changes/{ticket}/` | Archived work items |

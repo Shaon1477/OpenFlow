@@ -1,6 +1,6 @@
-import { existsSync } from "node:fs";
-import { resolve } from "node:path";
-import { fingerprintArtifacts, resolveStepArtifacts } from "../lib/artifacts.js";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fingerprintArtifacts, resolveAdoptArtifacts } from "../lib/artifacts.js";
 import { loadConfig } from "../lib/config.js";
 import { getStep, loadFlowDefinition, nextStepKey } from "../lib/flow-loader.js";
 import { appendAudit, readState, requireTicket, writeState } from "../lib/state.js";
@@ -13,6 +13,38 @@ export interface AdoptOptions {
   paths?: string[];
   note?: string;
   advance?: boolean;
+}
+
+/**
+ * When adopting analyze from incoming docs, copy them into the canonical
+ * context.md later stages expect.
+ */
+function materializeAnalyzeContext(
+  cwd: string,
+  ticketId: string,
+  incoming: string[],
+): string | null {
+  const canonicalRel = `openflow/changes/${ticketId}/context.md`;
+  const canonicalAbs = resolve(cwd, canonicalRel);
+  const markdown: string[] = [];
+  for (const path of incoming) {
+    const abs = resolve(cwd, path);
+    if (!existsSync(abs)) continue;
+    if (statSync(abs).isDirectory()) continue;
+    if (!/\.md$/i.test(path)) continue;
+    markdown.push(abs);
+  }
+  if (!markdown.length) return null;
+  mkdirSync(dirname(canonicalAbs), { recursive: true });
+  if (markdown.length === 1) {
+    copyFileSync(markdown[0], canonicalAbs);
+  } else {
+    const body = markdown
+      .map((file) => readFileSync(file, "utf8").trimEnd())
+      .join("\n\n---\n\n");
+    writeFileSync(canonicalAbs, `${body}\n`, "utf8");
+  }
+  return canonicalRel;
 }
 
 /**
@@ -31,14 +63,36 @@ export function runAdopt(options: AdoptOptions): void {
   const step = getStep(flow, options.stepKey);
   if (!step) throw new Error(`Step "${options.stepKey}" is not part of flow ${flow.id}.`);
 
-  const paths = options.paths?.length
-    ? options.paths
-    : resolveStepArtifacts(config, step, id, ticket);
+  let source: "flag" | "incoming" | "default" = "flag";
+  let paths: string[];
+  if (options.paths?.length) {
+    paths = options.paths;
+  } else {
+    const resolved = resolveAdoptArtifacts(cwd, config, step, id, ticket);
+    paths = resolved.paths;
+    source = resolved.source;
+  }
+
   const missing = paths.filter((path) => !existsSync(resolve(cwd, path)));
   if (paths.length && missing.length === paths.length) {
+    const incomingHint = config.artifacts.incoming
+      ? ` Looked in artifacts.incoming (${source}).`
+      : "";
     throw new Error(
-      `None of the artifacts exist yet: ${missing.join(", ")}. Pass --path to point at the existing docs.`,
+      `None of the artifacts exist yet: ${missing.join(", ")}.${incomingHint} ` +
+        `Drop the ${id} docs in that folder, or pass --path.`,
     );
+  }
+  if (!paths.length) {
+    throw new Error(
+      `No artifacts found for "${step.key}". Set artifacts.incoming.${step.key} ` +
+        `(or .${step.kind}) in openflow.yml, or pass --path.`,
+    );
+  }
+
+  if (source !== "flag" && step.kind === "analyze") {
+    const canonical = materializeAnalyzeContext(cwd, id, paths);
+    if (canonical && !paths.includes(canonical)) paths = [...paths, canonical];
   }
 
   const now = new Date().toISOString();
@@ -84,6 +138,9 @@ export function runAdopt(options: AdoptOptions): void {
   writeState(cwd, state);
 
   console.log(`Adopted "${step.key}" as completed from existing artifacts.`);
+  if (source === "incoming") {
+    console.log("  (from artifacts.incoming in openflow.yml)");
+  }
   for (const path of paths) {
     console.log(`  ${existsSync(resolve(cwd, path)) ? "✓" : "missing"} ${path}`);
   }

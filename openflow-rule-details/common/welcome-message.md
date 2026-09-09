@@ -1,6 +1,6 @@
 # First-run welcome
 
-Shown once, when a workspace has `openflow.yml` but no `openflow/state.json`.
+Shown once, when a workspace has `openflow.md` but no `openflow/state.json`.
 Keep it short — the developer wants to start working.
 
 ---
@@ -25,7 +25,7 @@ OpenFlow — workflow orchestration for AI-assisted delivery
 
 ## Rules
 
-1. Read the real values from `openflow.yml` and `openflow rules`. Never show
+1. Read the real values from `openflow.md` and `openflow rules`. Never show
    placeholders or an invented stack.
 2. If a role has no rule pack, say so here — that is the moment the team is most
    likely to add one:

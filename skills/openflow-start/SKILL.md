@@ -1,41 +1,26 @@
 ---
 name: openflow-start
-description: Start or resume an OpenFlow delivery for a work item. Use when the user says /openflow-start, "start PROD-1234", "pick up this ticket", or names a work item to deliver end to end.
+description: Start or resume an OpenFlow delivery for a work item. Use when the user says /openflow-start, "start PROD-1234", "pick up this ticket", or names a work item to deliver end to end. Begins the current stage immediately.
 allowed-tools: Bash(openflow:*)
 license: MIT
-compatibility: Requires the openflow CLI and an openflow.yml (run `openflow init` once per project).
+compatibility: Requires the openflow CLI and openflow.md (run `openflow init` once per project).
 metadata:
   author: openflow
   version: "2.0"
 ---
 
-Begin (or resume) a governed delivery. OpenFlow owns the process; you do the
-engineering.
+Start the ticket **and do the current stage in this same turn**. Do not wait for `/openflow-run`.
 
 ## Steps
 
-1. Confirm setup, and stop with a clear message if it is missing:
+1. Confirm setup (`openflow status` / `openflow flows`). Stop if `openflow.md` is missing.
+2. Start or resume:
    ```bash
-   openflow status || openflow flows
+   openflow start <TICKET-OR-SLUG> [--flow <id>]
    ```
-2. Start or resume the work item. Add sub-item ids per role when they are known:
-   ```bash
-   openflow start <TICKET> --title "<short title>" \
-     [--flow <flow-id>] [--sub frontend=<ID> --sub backend=<ID>]
-   ```
-   Re-running `start` on an existing item resumes it and never resets progress.
-3. Read the stage manifest and follow it:
-   ```bash
-   openflow next
-   ```
-4. Hand off to `/openflow-run` to execute the current stage.
+   Example: `openflow start prod-5790-trip-accept --flow default`
+3. `openflow next --json`
+4. Load the protocol + rule packs. Ask in chat if anything is missing.
+5. Do this one stage. Stop at the gate. Tell the user to `/openflow-approve`.
 
-## Rules
-
-- Never skip ahead. `openflow next` decides what is allowed now.
-- The flow comes from `openflow.yml` → `project.flow` unless the user passes
-  `--flow`. List options with `openflow flows`.
-- If the work item cannot be read (no tracker, no MCP, no file), say so and ask
-  the user to paste it — do not invent requirements.
-- If the user already has implementation docs written elsewhere, use
-  `/openflow-adopt` rather than regenerating them.
+Never self-approve. Never skip ahead. Never ask the user to type `/openflow-run` after start.

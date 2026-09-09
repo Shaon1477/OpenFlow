@@ -10,13 +10,13 @@ Establish what kind of workspace this is before touching anything.
 
 | Check | If missing |
 |---|---|
-| `openflow.yml` in the workspace root | Not an OpenFlow project. Offer `openflow init`; do not scaffold silently. |
+| `openflow.md` (or `openflow.yml`) in the workspace root | Not an OpenFlow project. Offer `openflow init`; do not scaffold silently. |
 | `openflow/state.json` | First run. Show `welcome-message.md`. |
 | State exists | Resume. Follow `session-continuity.md`. |
 
 ## 2. Are the configured repos real?
 
-For each role in `openflow.yml` → `repos`:
+For each role in `openflow.md` / `openflow.yml` → `repos`:
 
 - Does the path exist? Is it a git repository?
 - Current branch, and whether the tree is clean.

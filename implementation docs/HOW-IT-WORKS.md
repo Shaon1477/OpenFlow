@@ -221,6 +221,7 @@ templates/        context, proposal, spec, design, tasks, handoff, living-contex
 
 ```
 openflow.yml                         project config
+openflow-directories.md              Jira / frontend / backend / context folders
 .openflow/rules/                     their craft rules
 .openflow/flows/                     optional custom flows
 .cursor/rules/openflow.mdc           always-on agent rules
@@ -318,6 +319,7 @@ What we still owe those genres (not in the engine yet): OpenSpec’s typed ADDED
 | `openflow approve` | Gate + fingerprint + advance (`--step`, `-m`) |
 | `openflow status` | Progress, blockers, stale |
 | `openflow rules` | Resolved packs per role |
+| `openflow dirs` | Doc folders from `openflow-directories.md` |
 | `openflow drift` | Recompute stale |
 | `openflow check` | Definition of Done |
 | `openflow adopt <step>` | Register external artifacts |

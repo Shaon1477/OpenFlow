@@ -31,6 +31,9 @@ branching:
 
 artifacts:
   dir: openflow/changes # per-repo folder for proposal/specs/design/tasks
+  # Prefer openflow-directories.md at the repo root. This block is an optional override.
+  # incoming:
+  #   analyze: jira-tasks
 
 # Your engineering rules, per role. OpenFlow maintains the flow; these decide how
 # the code is actually written. Omit a role to fall back to convention discovery

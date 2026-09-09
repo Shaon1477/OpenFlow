@@ -29,11 +29,13 @@ That single command returns the stage, its protocol file, the engine rules, **th
 project's rule packs for the role**, the skills to run, the exact artifact paths,
 any blocker, and anything that went stale. Then:
 
-1. Load the stage protocol (`openflow-rule-details/stages/<kind>.md`).
-2. Load the engine rules the manifest lists.
-3. Load **every** rule pack file the manifest lists.
-4. Load the artifacts of each `depends_on` stage.
-5. Execute that one stage. Stop at its gate.
+1. Load `workflow_rule` if the manifest has one (`workflow-rules/<flow>/<step>.md`,
+   or another folder when the YAML says `use: default`).
+2. Load the stage protocol (`openflow-rule-details/stages/<kind>.md`).
+3. Load the engine rules the manifest lists.
+4. Load **every** rule pack file the manifest lists.
+5. Load the artifacts of each `depends_on` stage.
+6. Execute that one stage. Stop at its gate.
 
 If there is no state yet: `openflow-rule-details/inception/workspace-detection.md`,
 then `common/welcome-message.md`. If there is: `common/session-continuity.md`.
@@ -63,8 +65,11 @@ First path that exists wins, so a project can override any engine rule:
 | Authored by | OpenFlow | The team |
 | Wins on | Process questions | Engineering questions |
 
-Rule packs are resolved per role from `openflow.yml` → `rules.packs`, or discovered
-by convention:
+Per-step playbooks (PrimeVue, API style, …) live in `.openflow/workflow-rules/<flow>/`
+and win on *how this team does that stage*. Engine protocols still win on process.
+
+Rule packs are resolved per role from `openflow.md` (and optional `openflow.yml` →
+`rules.packs`), or discovered by convention:
 
 ```
 .openflow/rules/<role>.md        .openflow/rules/<role>/*.md
@@ -96,7 +101,7 @@ config (`frontend`, `backend`, `mobile`, `data`, anything), never hardcoded.
 
 ## Work items are not assumed to be Jira
 
-`openflow.yml` → `intake.provider`: `jira`, `linear`, `github`, `mcp`, `file`,
+`openflow.md` (`intake='file'`) or `openflow.yml` → `intake.provider`: `jira`, `linear`, `github`, `mcp`, `file`,
 `manual`, `none`. The CLI reads `file` itself; everything else returns instructions
 you execute with whatever MCP or CLI the project has. No tracker access is a reason
 to ask the developer, never a reason to invent requirements. See
@@ -114,7 +119,7 @@ openflow adopt <stage> --path <dir> --note "written by another agent"
 
 | Artifact | Path | Role |
 |---|---|---|
-| Project config | `openflow.yml` | Flow, intake, repos, rules, extensions, Definition of Done |
+| Project config | `openflow.md` | Flow, repos, incoming folders (`openflow.yml` is optional fallback) |
 | State | `openflow/state.json` | Cursor, sub-items, fingerprints, staleness, blockers |
 | Work item context | `openflow/changes/{ticket}/context.md` | Normalized item and scope |
 | Questions | `openflow/changes/{ticket}/questions.md` | Blocking questions with `[Answer]:` |
@@ -138,6 +143,7 @@ Never hand-edit `openflow/state.json`. Use the CLI.
 | `openflow block` | Record or clear a blocker (`--clear`) |
 | `openflow status` | Stage progress, blockers, stale work |
 | `openflow rules` | Resolved rule packs per role |
+| `openflow dirs` | Repos and folders from `openflow.md` |
 | `openflow drift` | Detect post-approval changes, mark dependents stale |
 | `openflow check` | Executable Definition of Done |
 | `openflow adopt` | Register externally authored work as a stage |

@@ -1,5 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { runAdopt } from "./adopt.js";
+import { resolveIncomingArtifacts } from "../lib/artifacts.js";
 import {
   formatBranchPattern,
   loadConfig,
@@ -11,6 +13,7 @@ import {
   loadFlowDefinition,
 } from "../lib/flow-loader.js";
 import { resolveIntake } from "../lib/intake.js";
+import { parseWorkItemArg } from "../lib/ticket.js";
 import {
   appendAudit,
   emptyState,
@@ -18,6 +21,7 @@ import {
   readState,
   writeState,
   type OpenflowState,
+  type TicketState,
 } from "../lib/state.js";
 
 function renderContext(
@@ -52,9 +56,10 @@ export interface StartOptions {
 
 export function runStart(options: StartOptions): void {
   const cwd = options.cwd ?? process.cwd();
+  const parsed = parseWorkItemArg(options.ticketId);
+  const ticketId = parsed.ticketId;
   const config = loadConfig(cwd);
   const flow = loadFlowDefinition(options.flow ?? config.project.flow, cwd);
-  const ticketId = options.ticketId.toUpperCase();
   const now = new Date().toISOString();
 
   const state = readState(cwd) ?? emptyState(config.ai_tool);
@@ -73,18 +78,28 @@ export function runStart(options: StartOptions): void {
     return;
   }
 
-  const title = options.title ?? ticketId;
+  const title = options.title ?? parsed.title ?? ticketId;
   const changeDir = resolve(cwd, "openflow/changes", ticketId);
   mkdirSync(changeDir, { recursive: true });
 
   const intake = resolveIntake(cwd, config, ticketId);
   const contextRel = `openflow/changes/${ticketId}/context.md`;
   const auditRel = `openflow/changes/${ticketId}/audit.md`;
+  const entry = firstStep(flow);
+  const incoming = resolveIncomingArtifacts(cwd, config, entry, ticketId, {
+    sub_tickets: options.subTickets ?? {},
+  } as TicketState);
+  const incomingMarkdown = incoming.find((path) => /\.md$/i.test(path) && existsSync(resolve(cwd, path)));
+  const incomingBody = incomingMarkdown
+    ? readFileSync(resolve(cwd, incomingMarkdown), "utf8")
+    : undefined;
 
   if (!existsSync(resolve(cwd, contextRel))) {
     writeFileSync(
       resolve(cwd, contextRel),
-      renderContext(cwd, ticketId, title, flow.id, intake.body),
+      incomingBody?.trim()
+        ? incomingBody
+        : renderContext(cwd, ticketId, title, flow.id, intake.body),
       "utf8",
     );
   }
@@ -97,7 +112,6 @@ export function runStart(options: StartOptions): void {
   const branches: Record<string, string> = {};
   for (const role of Object.keys(config.repos)) branches[role] = branch;
 
-  const entry = firstStep(flow);
   const steps = initStepMap(flow.steps.map((step) => step.key));
   steps[entry.key] = { status: "in_progress", started_at: now, artifacts: [] };
 
@@ -136,6 +150,16 @@ export function runStart(options: StartOptions): void {
 
   writeState(cwd, state as OpenflowState);
 
+  if (entry.kind === "analyze" && incomingMarkdown) {
+    runAdopt({
+      cwd,
+      ticketId,
+      stepKey: entry.key,
+      note: "from jira-tasks folder",
+    });
+    return;
+  }
+
   console.log(`Started ${ticketId} on flow "${flow.name}".`);
   console.log(`  Stage:   ${entry.key} — ${entry.name}`);
   console.log(`  Context: ${contextRel}`);
@@ -146,5 +170,5 @@ export function runStart(options: StartOptions): void {
     console.log("\nIntake instructions for the agent:");
     for (const line of intake.instructions) console.log(`  - ${line}`);
   }
-  console.log("\nRun `openflow next` for rules, skills and artifact paths.");
+  console.log("\nDo this stage now. Stop at the gate for `/openflow-approve`.");
 }

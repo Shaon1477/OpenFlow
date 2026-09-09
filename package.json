@@ -11,6 +11,7 @@
     "bin",
     "dist",
     "built-in-flows",
+    "workflow-rules",
     "schemas",
     "templates",
     "openflow-rules",

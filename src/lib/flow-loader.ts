@@ -35,8 +35,13 @@ const FlowStepSchema = z
     note: z.string().optional(),
     /** upstream step keys; used for drift + ordering checks */
     depends_on: z.array(z.string()).default([]),
-    /** engine rule files (relative to rule-details root) */
+    /** extra engine rule files (relative to rule-details root) */
     rules: z.array(z.string()).default([]),
+    /**
+     * Use another workflow's per-step file under workflow-rules/<use>/<key>.md
+     * e.g. use: default
+     */
+    use: z.string().min(1).optional(),
     /** roles whose project rule packs must load for this stage */
     rule_packs: z.array(z.string()).optional(),
     /** OpenFlow skills the agent should run */
@@ -77,6 +82,7 @@ export function projectFlowDirs(cwd: string): string[] {
 }
 
 export function resolveFlowPath(flowRef: string, cwd: string): string {
+  if (flowRef === "v5") flowRef = "default";
   if (isAbsolute(flowRef)) {
     if (existsSync(flowRef)) return flowRef;
     throw new Error(`Flow not found: ${flowRef}`);

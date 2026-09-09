@@ -12,14 +12,25 @@ metadata:
 Teams arrive mid-process. Adopting existing work is supported so nobody has to
 regenerate documents they already have — and so drift detection still covers them.
 
+## 0. Prefer project folders over `--path`
+
+If `openflow.md` already points at the docs (`jira-tasks='…'`), adopt with just the stage.
+
+```bash
+openflow adopt analyze --note "analyzed from Jira context"
+```
+
+A directory is scanned for filenames containing the ticket id (`PROD-5890`,
+`prod-5890-jira-tasks.md`, …). `--path` is only for a one-off location.
+
 ## 1. Find where the stage expects artifacts
 
 ```bash
 openflow next --json
 ```
 
-Read `step.artifacts`. If the existing documents live elsewhere, you will pass
-`--path`.
+Read `step.artifacts`. If the existing documents live elsewhere and `incoming` is
+not set, you will pass `--path`.
 
 ## 2. Verify before adopting — this is the important part
 

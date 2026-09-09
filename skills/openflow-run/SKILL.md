@@ -1,9 +1,9 @@
 ---
 name: openflow-run
-description: Execute the current OpenFlow stage — load the stage protocol plus this project's own rules, do the work, stop at the gate. Use for /openflow-run, "continue the flow", "do the next step", or after /openflow-approve.
+description: Execute the current OpenFlow stage — load the stage protocol plus this project's own rules, do the work, stop at the gate. Use for `/openflow-run` only if the user paused and says "continue". After `/openflow-start-*` or `/openflow-approve`, you already do the stage — do not ask them to type this.
 allowed-tools: Bash(openflow:*)
 license: MIT
-compatibility: Requires the openflow CLI, openflow.yml and an active work item (`openflow start`).
+compatibility: Requires the openflow CLI, openflow.md and an active work item (`openflow start`).
 metadata:
   author: openflow
   version: "2.0"
@@ -23,6 +23,7 @@ It tells you:
 |---|---|
 | `step.kind` | Which stage protocol to follow |
 | `step.detail_file` | The protocol file (under `openflow-rule-details/stages/`) |
+| `step.workflow_rule` | This team's per-step playbook (`workflow-rules/<flow>/<step>.md`) |
 | `step.role`, `step.sub_ticket` | Whose artifacts these are and where they go |
 | `step.repos` | The only repos you may write to |
 | `engine_rules` | OpenFlow's process/discipline rules to load |
@@ -34,7 +35,7 @@ It tells you:
 
 ## 2. Load rules before working
 
-Read the stage protocol, the engine rules, and **every file in `rule_packs`**.
+Read `workflow_rule` first (stack, UI kit, how this team plans/builds this stage), then the stage protocol, the engine rules, and **every file in `rule_packs`**.
 
 - Project rule packs win on *how to build* (stack, patterns, structure, tests).
 - The stage protocol wins on *process* (artifacts, ordering, gates).
@@ -63,9 +64,6 @@ guess business rules, and do not send the user to edit a file unless they ask.
 Present: what was produced (paths), decisions, risks, open questions, and the
 verification result when `verify` is true. Then tell the user to run
 `/openflow-approve`.
-
-Never self-approve, never advance the cursor, never start the next stage in the
-same turn.
 
 ## If the user reports a hand edit
 

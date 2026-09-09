@@ -7,11 +7,14 @@ import { runApprove } from "./cli/approve.js";
 import { runStatus } from "./cli/status.js";
 import { runArchive } from "./cli/archive.js";
 import { runRules } from "./cli/rules.js";
+import { runDirs } from "./cli/dirs.js";
 import { runDrift } from "./cli/drift.js";
 import { runCheck } from "./cli/check.js";
 import { runAdopt } from "./cli/adopt.js";
 import { runBlock } from "./cli/block.js";
+import { runCr } from "./cli/cr.js";
 import { listFlows } from "./lib/flow-loader.js";
+import { parseWorkItemArg } from "./lib/ticket.js";
 
 function guard(action: () => void | boolean): void {
   try {
@@ -43,8 +46,8 @@ program
 
 program
   .command("init")
-  .description("Scaffold openflow.yml, .openflow/, skills and rules")
-  .option("-f, --force", "Overwrite existing openflow.yml")
+  .description("Scaffold openflow.md, skills and rules")
+  .option("-f, --force", "Overwrite existing openflow.md")
   .option("--flow <id>", "Default flow id")
   .option("--name <name>", "Project name")
   .action((opts) =>
@@ -72,14 +75,15 @@ program
   .option("--flow <id>", "Flow for this work item")
   .option("--sub <role=id...>", "Sub-item per role, e.g. --sub frontend=PROD-5102")
   .action((ticket, opts) =>
-    guard(() =>
+    guard(() => {
+      const parsed = parseWorkItemArg(ticket);
       runStart({
-        ticketId: ticket,
-        title: opts.title,
+        ticketId: parsed.ticketId,
+        title: opts.title ?? parsed.title,
         flow: opts.flow,
         subTickets: parsePairs(opts.sub),
-      }),
-    ),
+      });
+    }),
   );
 
 program
@@ -127,6 +131,12 @@ program
   .action((opts) => guard(() => runRules({ role: opts.role, json: opts.json })));
 
 program
+  .command("dirs")
+  .description("Show repos and doc folders from openflow.md")
+  .option("--json", "Machine-readable output")
+  .action((opts) => guard(() => runDirs({ json: opts.json })));
+
+program
   .command("drift")
   .description("Detect artifacts changed after approval and mark downstream stages stale")
   .argument("[ticket]", "Work item id (default: active)")
@@ -142,6 +152,24 @@ program
   .option("--json", "Machine-readable output")
   .action((ticket, opts) =>
     guard(() => runCheck({ ticketId: ticket, json: opts.json })),
+  );
+
+program
+  .command("cr")
+  .description("Change request on one role of a flow")
+  .argument("<role>", "Role to change (frontend, backend, …)")
+  .argument("<ticket>", "Core ticket (e.g. prod-5790)")
+  .option("--flow <id>", "Flow id (default: openflow.md workflow)")
+  .option("-m, --message <text>", "What to change")
+  .action((role, ticket, opts) =>
+    guard(() =>
+      runCr({
+        role,
+        ticketArg: ticket,
+        flow: opts.flow,
+        message: opts.message,
+      }),
+    ),
   );
 
 program

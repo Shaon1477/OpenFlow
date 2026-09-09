@@ -7,13 +7,11 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
-import {
-  DEFAULT_CONFIG_FILENAME,
-  OPENFLOW_DIR,
-  loadConfigFromFile,
-} from "../lib/config.js";
-import { getPackageRoot, listFlows } from "../lib/flow-loader.js";
-import { DEFAULT_CONVENTIONS, resolveAllRolePacks } from "../lib/rules.js";
+import { OPENFLOW_DIR, PROJECT_MD_FILENAME, loadConfig } from "../lib/config.js";
+import { loadFlowDefinition, getPackageRoot, listFlows } from "../lib/flow-loader.js";
+import { DEFAULT_PROJECT_MD } from "../lib/project-md.js";
+import { resolveAllRolePacks } from "../lib/rules.js";
+import { shortFlowId } from "../lib/ticket.js";
 
 const PACKAGE_ROOT = getPackageRoot();
 
@@ -37,16 +35,81 @@ function skillTargets(cwd: string, aiTool: AiTool): string[] {
   return targets;
 }
 
+function stageWork(): string {
+  return `Then **do the current stage now** (do not wait for \`/openflow-run\`):
+
+1. \`openflow next --json\`
+2. Load \`workflow_rule\` (this team's per-step playbook), then the stage protocol, engine rules, and project rule packs.
+3. Ask in chat if anything is missing (Jira docs, Figma/MCP, screens, instruction).
+4. Do exactly this one stage. Stop at the gate.
+5. Tell the user to \`/openflow-approve\`. Never self-approve. Never start the next stage in this turn.`;
+}
+
+function startSkillBody(flowId: string, short: string): string {
+  return `---
+name: openflow-start-${short}
+description: Start OpenFlow ${flowId} for a work item (e.g. /openflow-start-${short} prod-5790-trip-accept). Begins work immediately.
+allowed-tools: Bash(openflow:*)
+---
+
+Start **${flowId}** and begin the first stage in this same turn.
+
+1. \`openflow start <TICKET-OR-SLUG> --flow ${flowId}\`
+   Example: \`openflow start prod-5790-trip-accept --flow ${flowId}\`
+2. Jira docs in the \`jira-tasks\` folder are adopted automatically when present.
+
+${stageWork()}
+`;
+}
+
+function crSkillBody(flowId: string, short: string, role: string): string {
+  return `---
+name: openflow-cr-${role}-${short}
+description: Change request on ${role} for OpenFlow ${flowId} (e.g. /openflow-cr-${role}-${short} prod-5790). Begins work immediately.
+allowed-tools: Bash(openflow:*)
+---
+
+Change request: **${role}** of **${flowId}**, tied to the core ticket.
+
+1. If the user already said what to change, pass it as \`-m\`. If not, ask in chat first.
+2. \`openflow cr ${role} <TICKET> --flow ${flowId} -m "<their prompt>"\`
+
+${stageWork()}
+`;
+}
+
 function installSkills(cwd: string, aiTool: AiTool): number {
   const source = join(PACKAGE_ROOT, "skills");
-  if (!existsSync(source)) return 0;
   let count = 0;
   for (const targetRoot of skillTargets(cwd, aiTool)) {
     mkdirSync(targetRoot, { recursive: true });
-    for (const name of readdirSync(source)) {
-      if (name === "README.md") continue;
-      cpSync(join(source, name), join(targetRoot, name), { recursive: true });
+    if (existsSync(source)) {
+      for (const name of readdirSync(source)) {
+        if (name === "README.md") continue;
+        cpSync(join(source, name), join(targetRoot, name), { recursive: true });
+        count++;
+      }
+    }
+    for (const entry of listFlows(cwd)) {
+      const short = shortFlowId(entry.id);
+      const startDir = join(targetRoot, `openflow-start-${short}`);
+      mkdirSync(startDir, { recursive: true });
+      writeFileSync(join(startDir, "SKILL.md"), startSkillBody(entry.id, short), "utf8");
       count++;
+      try {
+        const flow = loadFlowDefinition(entry.id, cwd);
+        const roles = [
+          ...new Set(flow.steps.map((step) => step.role).filter(Boolean)),
+        ] as string[];
+        for (const role of roles) {
+          const crDir = join(targetRoot, `openflow-cr-${role}-${short}`);
+          mkdirSync(crDir, { recursive: true });
+          writeFileSync(join(crDir, "SKILL.md"), crSkillBody(entry.id, short, role), "utf8");
+          count++;
+        }
+      } catch {
+        /* skip broken flow */
+      }
     }
   }
   return count;
@@ -57,67 +120,18 @@ function installCursorRule(cwd: string): boolean {
   if (!existsSync(core)) return false;
   const rulesDir = resolve(cwd, ".cursor", "rules");
   mkdirSync(rulesDir, { recursive: true });
-  const body = `---
+  writeFileSync(
+    resolve(rulesDir, "openflow.mdc"),
+    `---
 description: OpenFlow workflow orchestration — follow whenever an OpenFlow delivery is active
 alwaysApply: true
 ---
 
 ${readFileSync(core, "utf8")}
-`;
-  writeFileSync(resolve(rulesDir, "openflow.mdc"), body, "utf8");
+`,
+    "utf8",
+  );
   return true;
-}
-
-function configTemplate(flow: string, name: string): string {
-  return `version: 2
-
-project:
-  name: ${name}
-  flow: ${flow} # default only — a skill or --flow can pick another flow per ticket
-
-# Where work items come from. jira | linear | github | mcp | file | manual | none
-# Provider-backed intake is executed by your agent through whatever MCP/CLI you
-# already have; \`file\` is read directly by the CLI.
-intake:
-  provider: manual
-  # path: tickets/{ticket}.md        # provider: file
-  # instructions: "Use our internal tracker MCP tool workitem.get"
-
-# Repo roles. Add or rename freely — the engine has no fixed roles.
-repos:
-  context: ../context-docs
-  # frontend: ../web
-  # backend: ../api
-  # test: ../e2e
-
-# Role whose repo stores living documentation.
-context_role: context
-
-branching:
-  pattern: "feature/{ticket}-{slug}"
-
-artifacts:
-  dir: openflow/changes # per-repo folder for generated plan/spec/task artifacts
-
-# Your engineering rules per role. Point these anywhere; if omitted, OpenFlow
-# discovers conventions such as .openflow/rules/frontend.md or {repo}/AGENTS.md.
-rules:
-  discover: true
-  packs: {}
-  # packs:
-  #   frontend:
-  #     - .openflow/rules/frontend.md
-  #     - skill:my-design-system
-  #   backend:
-  #     - ../api/AGENTS.md
-
-# Opt-in engineering extensions (any name your rules define).
-extensions: {}
-
-# Executable Definition of Done. Leave empty to use the flow's defaults
-# (every step approved, context docs present, no unresolved drift).
-dod: []
-`;
 }
 
 export interface InitOptions {
@@ -129,39 +143,67 @@ export interface InitOptions {
 
 export function runInit(options: InitOptions = {}): void {
   const cwd = options.cwd ?? process.cwd();
-  const configPath = resolve(cwd, DEFAULT_CONFIG_FILENAME);
+  const mdPath = resolve(cwd, PROJECT_MD_FILENAME);
   const openflowDir = resolve(cwd, OPENFLOW_DIR);
 
-  if (existsSync(configPath) && !options.force) {
-    throw new Error(
-      `${DEFAULT_CONFIG_FILENAME} already exists. Use --force to overwrite.`,
-    );
+  if (existsSync(mdPath) && !options.force) {
+    throw new Error(`${PROJECT_MD_FILENAME} already exists. Use --force to overwrite.`);
   }
 
   mkdirSync(resolve(openflowDir, "changes"), { recursive: true });
   mkdirSync(resolve(cwd, ".openflow/rules"), { recursive: true });
   mkdirSync(resolve(cwd, ".openflow/flows"), { recursive: true });
+  mkdirSync(resolve(cwd, ".openflow/workflow-rules"), { recursive: true });
 
   const aiTool = detectAiTool(cwd);
-  const flow = options.flow ?? "delivery-flow";
-  const name = options.projectName ?? "my-project";
-  const body = `${configTemplate(flow, name)}\nai_tool: ${aiTool}\n`;
-  writeFileSync(configPath, body, "utf8");
+  const flow = options.flow ?? "default";
+  const name = options.projectName ?? "my-app";
+  const md = DEFAULT_PROJECT_MD.replace("workflow='default'", `workflow='${flow}'`).replace(
+    "name='my-app'",
+    `name='${name}'`,
+  );
+  writeFileSync(mdPath, md, "utf8");
+
+  const packagedRules = join(PACKAGE_ROOT, "workflow-rules");
+  if (existsSync(packagedRules)) {
+    const destRules = resolve(cwd, ".openflow/workflow-rules");
+    for (const flowDir of readdirSync(packagedRules, { withFileTypes: true })) {
+      if (!flowDir.isDirectory()) continue;
+      mkdirSync(join(destRules, flowDir.name), { recursive: true });
+      for (const file of readdirSync(join(packagedRules, flowDir.name))) {
+        const to = join(destRules, flowDir.name, file);
+        if (existsSync(to)) continue;
+        cpSync(join(packagedRules, flowDir.name, file), to);
+      }
+    }
+  }
 
   const templates = join(PACKAGE_ROOT, "templates");
   if (existsSync(templates)) {
-    cpSync(templates, resolve(openflowDir, "templates"), { recursive: true });
+    mkdirSync(resolve(openflowDir, "templates"), { recursive: true });
+    for (const name of readdirSync(templates)) {
+      if (name === PROJECT_MD_FILENAME || name === "openflow-directories.md") continue;
+      cpSync(join(templates, name), resolve(openflowDir, "templates", name), {
+        recursive: true,
+      });
+    }
   }
 
   const skills = installSkills(cwd, aiTool);
   const ruleInstalled = installCursorRule(cwd);
-  const config = loadConfigFromFile(configPath);
+  const config = loadConfig(cwd);
 
-  console.log(`Created ${DEFAULT_CONFIG_FILENAME} (flow: ${flow})`);
-  console.log(`Created ${OPENFLOW_DIR}/ and .openflow/{rules,flows}/`);
+  console.log(`Created ${PROJECT_MD_FILENAME} (workflow: ${flow})`);
+  console.log(`Created ${OPENFLOW_DIR}/ and .openflow/{rules,flows,workflow-rules}/`);
   console.log(`Detected AI tool: ${aiTool}`);
   if (skills) console.log(`Installed ${skills} skill copies`);
   if (ruleInstalled) console.log("Installed .cursor/rules/openflow.mdc");
+  console.log(`Created .openflow/workflow-rules/default/ (edit frontend-plan.md for PrimeVue, etc.)`);
+  console.log("\nSlash commands:");
+  console.log(`  /openflow-start-${shortFlowId(flow)} prod-5790-trip-accept`);
+  console.log(`  /openflow-cr-frontend-${shortFlowId(flow)} prod-5790`);
+  console.log("\nOwn workflow: add built-in-flows/v6.yml (or .openflow/flows/v6.yml),");
+  console.log("add workflow-rules/v6/ or set `use: default` on a step. Then init --force.");
 
   console.log("\nAvailable flows:");
   for (const entry of listFlows(cwd)) {
@@ -176,9 +218,5 @@ export function runInit(options: InitOptions = {}): void {
       : "(none yet)";
     console.log(`  ${pack.role}: ${found}`);
   }
-  console.log("\nDrop your own rules at any of these paths (per role):");
-  for (const convention of DEFAULT_CONVENTIONS) {
-    console.log(`  ${convention}`);
-  }
-  console.log("\nNext: edit openflow.yml (repos + intake + rules), then `openflow start <ticket>`.");
+  console.log("\nEdit openflow.md (repos + folders), drop rules in .openflow/rules/<role>.md");
 }

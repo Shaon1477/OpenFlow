@@ -47,34 +47,26 @@ try {
   }
 
   console.log("init");
-  of(["init", "--name", "smoke", "--flow", "delivery-flow"]);
-  check("openflow.yml created", existsSync(join(proj, "openflow.yml")));
+  of(["init", "--name", "smoke", "--flow", "default"]);
+  check("openflow.md created", existsSync(join(proj, "openflow.md")));
+  check("start-default skill installed", existsSync(join(proj, ".cursor/skills/openflow-start-default/SKILL.md")));
+  check("cr-frontend-default skill installed", existsSync(join(proj, ".cursor/skills/openflow-cr-frontend-default/SKILL.md")));
+  check("start-v6 skill installed", existsSync(join(proj, ".cursor/skills/openflow-start-v6/SKILL.md")));
+  check("workflow-rules copied", existsSync(join(proj, ".openflow/workflow-rules/default/frontend-plan.md")));
 
   writeFileSync(
-    join(proj, "openflow.yml"),
-    `version: 2
-project:
-  name: smoke
-  flow: delivery-flow
-intake:
-  provider: file
-  path: tickets/{ticket}.md
-repos:
-  frontend: ../web
-  backend: ../api
-  context: ../ctx
-  test: ../e2e
-context_role: context
-branching:
-  pattern: "feature/{ticket}-{slug}"
-artifacts:
-  dir: openflow/changes
-rules:
-  discover: true
-  packs:
-    frontend: [.openflow/rules/frontend.md]
-extensions: {}
-dod: []
+    join(proj, "openflow.md"),
+    `workflow='default'
+name='smoke'
+intake='file'
+intake-path='tickets/{ticket}.md'
+frontend='../web'
+backend='../api'
+context='../ctx'
+test='../e2e'
+jira-tasks='jira-tasks'
+frontend-implementation='../web/docs'
+backend-implementation='../api/docs'
 `,
   );
   mkdirSync(join(proj, "tickets"), { recursive: true });
@@ -100,6 +92,11 @@ dod: []
   const manifest = JSON.parse(of(["next", "--json"]));
   check("first stage is analyze", manifest.step.kind === "analyze");
   check("rule packs present in manifest", manifest.step.rule_packs.length > 0);
+  check(
+    "workflow_rule points at analyze.md",
+    typeof manifest.step.workflow_rule === "string" &&
+      /workflow-rules[/\\]default[/\\]analyze\.md$/.test(manifest.step.workflow_rule),
+  );
 
   writeArtifacts(join(root, "web/openflow/changes/SMOKE-2"), "v1\n");
   writeArtifacts(join(root, "api/openflow/changes/SMOKE-3"), "v1\n");
@@ -139,6 +136,23 @@ dod: []
   check("stage adopted from external artifacts", adopted.includes("Adopted"));
   check("adopted stage shown in status", of(["status", "SMOKE-9"]).includes("[adopted]"));
 
+  console.log("adopt from openflow.md jira-tasks");
+  mkdirSync(join(proj, "jira-tasks"), { recursive: true });
+  writeFileSync(
+    join(proj, "jira-tasks", "SMOKE-IN-jira-tasks.md"),
+    "# SMOKE-IN\nAlready analyzed from Jira.\n",
+  );
+  const dirsOut = of(["dirs"]);
+  check("dirs lists analyze → jira-tasks", /analyze\s+jira-tasks/.test(dirsOut));
+  const autoStart = of(["start", "SMOKE-IN", "--title", "Incoming"]);
+  check("start auto-adopts jira-tasks", autoStart.includes("jira-tasks/SMOKE-IN-jira-tasks.md"));
+  check("incoming adopt copied into context.md", existsSync(join(proj, "openflow/changes/SMOKE-IN/context.md")));
+  check("incoming adopt advanced cursor", /Cursor: frontend-plan/.test(autoStart));
+
+  const crOut = of(["cr", "frontend", "SMOKE-IN", "-m", "group trips by date"]);
+  check("cr jumps to frontend-plan", /Cursor: frontend-plan/.test(crOut));
+  check("cr writes prompt file", existsSync(join(proj, "openflow/changes/SMOKE-IN/cr-frontend.md")));
+
   console.log("blockers");
   of(["block", "waiting on review", "--ticket", "SMOKE-9"]);
   check("approval refused while blocked", of(["approve", "SMOKE-9"], { allowFail: true }).includes("blocked"));
@@ -147,6 +161,15 @@ dod: []
   console.log("archive");
   check("archive succeeds once clean", of(["archive", "SMOKE-1"]).includes("Archived"));
   check("archive folder created", existsSync(join(proj, "openflow/archive/changes/SMOKE-1")));
+
+  console.log("v6 reuses default step rules");
+  of(["start", "V6-1", "--title", "v6", "--flow", "v6"]);
+  const v6m = JSON.parse(of(["next", "V6-1", "--json"]));
+  check(
+    "v6 analyze use: default playbook",
+    typeof v6m.step.workflow_rule === "string" &&
+      /workflow-rules[/\\]default[/\\]analyze\.md$/.test(v6m.step.workflow_rule),
+  );
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

@@ -2,8 +2,10 @@ import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import yaml from "js-yaml";
 import { z } from "zod";
+import { configFromProjectMd } from "./project-md.js";
 
 export const DEFAULT_CONFIG_FILENAME = "openflow.yml";
+export const PROJECT_MD_FILENAME = "openflow.md";
 export const OPENFLOW_DIR = "openflow";
 export const DEFAULT_ARTIFACTS_DIR = "openflow/changes";
 
@@ -74,6 +76,13 @@ const OpenflowConfigSchema = z
       .object({
         /** per-repo relative dir that holds generated change artifacts */
         dir: z.string().min(1).default(DEFAULT_ARTIFACTS_DIR),
+        /**
+         * Already-written docs, keyed by stage key (`analyze`), kind (`plan`),
+         * or role (`frontend`). A directory is scanned for the ticket id.
+         */
+        incoming: z
+          .record(z.union([z.string().min(1), z.array(z.string().min(1))]))
+          .optional(),
       })
       .default({ dir: DEFAULT_ARTIFACTS_DIR }),
     rules: RulesSchema,
@@ -87,8 +96,10 @@ const OpenflowConfigSchema = z
 export type OpenflowConfig = z.infer<typeof OpenflowConfigSchema>;
 
 export function findConfigPath(cwd: string): string | null {
-  const direct = resolve(cwd, DEFAULT_CONFIG_FILENAME);
-  return existsSync(direct) ? direct : null;
+  const md = resolve(cwd, PROJECT_MD_FILENAME);
+  if (existsSync(md)) return md;
+  const yml = resolve(cwd, DEFAULT_CONFIG_FILENAME);
+  return existsSync(yml) ? yml : null;
 }
 
 function normalize(config: OpenflowConfig): OpenflowConfig {
@@ -100,7 +111,13 @@ function normalize(config: OpenflowConfig): OpenflowConfig {
 }
 
 export function loadConfigFromFile(filePath: string): OpenflowConfig {
-  const parsed = yaml.load(readFileSync(filePath, "utf8"));
+  const raw = readFileSync(filePath, "utf8");
+  if (filePath.endsWith(".md")) {
+    return normalize(
+      OpenflowConfigSchema.parse(configFromProjectMd(raw)),
+    );
+  }
+  const parsed = yaml.load(raw);
   return normalize(OpenflowConfigSchema.parse(parsed));
 }
 
@@ -108,7 +125,7 @@ export function loadConfig(cwd: string = process.cwd()): OpenflowConfig {
   const configPath = findConfigPath(cwd);
   if (!configPath) {
     throw new Error(
-      `No ${DEFAULT_CONFIG_FILENAME} found in ${cwd}. Run \`openflow init\` first.`,
+      `No openflow.md found in ${cwd}. Run \`openflow init\` first.`,
     );
   }
   return loadConfigFromFile(configPath);
@@ -142,7 +159,10 @@ export function expandTokens(template: string, ctx: TokenContext): string {
   if (ctx.role && ctx.repos?.[ctx.role]) {
     out = out.replace(/\{repo\}/g, ctx.repos[ctx.role]);
   }
-  if (ctx.ticket) out = out.replace(/\{ticket\}|\{parent\}/g, ctx.ticket);
+  if (ctx.ticket) {
+    out = out.replace(/\{ticket_lower\}/g, ctx.ticket.toLowerCase());
+    out = out.replace(/\{ticket\}|\{parent\}/g, ctx.ticket);
+  }
   if (ctx.slug) out = out.replace(/\{slug\}/g, ctx.slug);
   if (ctx.role) out = out.replace(/\{role\}/g, ctx.role);
   if (ctx.subTicket) out = out.replace(/\{sub_ticket\}/g, ctx.subTicket);

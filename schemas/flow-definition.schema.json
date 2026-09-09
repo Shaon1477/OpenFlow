@@ -72,6 +72,11 @@
           "items": { "type": "string" },
           "description": "Engine rule files relative to the rule-details root"
         },
+        "use": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Load per-step playbook from workflow-rules/<use>/<key>.md instead of this flow's folder (e.g. default)"
+        },
         "rule_packs": {
           "type": "array",
           "items": { "type": "string" },

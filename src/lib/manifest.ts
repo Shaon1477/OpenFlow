@@ -34,6 +34,31 @@ export function resolveRuleFile(cwd: string, ref: string): string {
   return ref;
 }
 
+export function workflowRuleRoots(cwd: string): string[] {
+  return [
+    resolve(cwd, ".openflow/workflow-rules"),
+    join(getPackageRoot(), "workflow-rules"),
+  ];
+}
+
+/**
+ * Per-step playbook: `.openflow/workflow-rules/<folder>/<step>.md` then the
+ * package copy. `step.use` picks another folder (e.g. `use: default`).
+ */
+export function resolveWorkflowRuleFile(
+  cwd: string,
+  flowId: string,
+  step: FlowStep,
+): string | null {
+  const folder = step.use ?? flowId;
+  const name = `${step.key}.md`;
+  for (const root of workflowRuleRoots(cwd)) {
+    const candidate = resolve(root, folder, name);
+    if (existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
 export function stageDetailFile(step: FlowStep): string | null {
   if (step.detail_file) return step.detail_file;
   return STAGE_DETAILS[step.kind] ?? null;
@@ -45,6 +70,7 @@ export interface StepManifest {
   subTicket?: string;
   repos: Record<string, string>;
   detailFile: string | null;
+  workflowRule: string | null;
   engineRules: string[];
   rulePacks: RolePack[];
   skills: string[];
@@ -88,6 +114,7 @@ export function buildStepManifest(
     subTicket: step.role ? ticket.sub_tickets[step.role] : undefined,
     repos,
     detailFile: stageDetailFile(step),
+    workflowRule: resolveWorkflowRuleFile(cwd, flow.id, step),
     engineRules,
     rulePacks: roles.map((role) => resolveRolePack(cwd, config, role)),
     skills: step.skills,

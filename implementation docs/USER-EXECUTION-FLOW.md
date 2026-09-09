@@ -112,7 +112,16 @@ Blocked work items cannot be approved.
 
 ## Work that already exists
 
-Docs written by another agent, or specs already in the repo:
+Docs written by another agent, or specs already in the repo.
+
+Set the folders once in `openflow-directories.md` (directory scanned for the ticket id),
+then:
+
+```bash
+openflow adopt analyze --note "from Jira context"
+```
+
+Or a one-off path:
 
 ```bash
 openflow adopt frontend-plan --path ../web/docs/PROD-5102/ --note "written elsewhere"

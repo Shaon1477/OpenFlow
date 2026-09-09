@@ -56,6 +56,7 @@ export function runNext(options: NextOptions = {}): void {
             role: step.role,
             repos: manifest.repos,
             detail_file: manifest.detailFile,
+            workflow_rule: manifest.workflowRule,
             engine_rules: manifest.engineRules,
             rule_packs: manifest.rulePacks,
             skills: manifest.skills,
@@ -108,6 +109,9 @@ export function runNext(options: NextOptions = {}): void {
   }
   for (const [role, path] of Object.entries(manifest.repos)) {
     console.log(`  Repo:        ${role} → ${path}`);
+  }
+  if (manifest.workflowRule) {
+    console.log(`  Step rules:  ${manifest.workflowRule}`);
   }
   if (manifest.detailFile) {
     console.log(`  Protocol:    ${resolveRuleFile(cwd, manifest.detailFile)}`);

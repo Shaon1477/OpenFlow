@@ -24,7 +24,7 @@ than a delivery built on a bad assumption.
 
 | Situation | Action |
 |---|---|
-| No `openflow.yml` | Critical. Tell the developer to run `openflow init`. |
+| No `openflow.md` | Critical. Tell the developer to run `openflow init`. |
 | A repo path in config does not exist | Critical for stages using that role; ask for the correct path. |
 | Role has no rule pack | Medium. Say so once, proceed with engine defaults, suggest `.openflow/rules/{role}.md`. |
 | Flow id not found | Critical. List `openflow flows`. |

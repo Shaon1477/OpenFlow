@@ -60,7 +60,7 @@ Standalone. No other workflow CLI is required.
 | Requirement | Notes |
 |---|---|
 | Node.js 20 or newer | `node -v` |
-| Git | Repos listed in `openflow.yml` |
+| Git | Repos listed in `openflow.md` |
 | A coding agent | Cursor, Claude Code, Windsurf, Codex, Copilot, or any agent that can run shell commands and read markdown |
 
 ---
@@ -92,61 +92,38 @@ To unlink later: `npm unlink -g openflow`.
 Run this in the workspace that should own the flow — typically a parent folder of your frontend, backend, and docs repos, or any one repo if you only have one.
 
 ```bash
-cd your-workspace
-openflow init --name my-app --flow delivery-flow
+openflow init --name my-app
 ```
 
-`init` creates:
+`init` creates `openflow.md` at the workspace root. Edit the paths:
 
-```text
-your-workspace/
-├── openflow.yml                 # flow, repos, intake, rules, DoD
-├── .openflow/
-│   ├── rules/                   # drop frontend.md / backend.md here
-│   └── flows/                   # optional custom flow YAML
-├── openflow/
-│   ├── changes/                 # per-ticket context, questions, audit
-│   └── templates/               # copied artifact templates
-├── .cursor/rules/openflow.mdc   # always-on agent rules
-└── .cursor/skills/openflow-*    # slash skills
+```
+workflow='default'
+frontend='../web'
+backend='../api'
+context='../context-docs'
+test='../e2e'
+jira-tasks='jira-tasks'
+frontend-implementation='../web/docs'
+backend-implementation='../api/docs'
+functional-context='../context-docs'
 ```
 
-Then edit `openflow.yml`:
+Then `/openflow-start-default prod-5790-trip-accept`.
 
-```yaml
-project:
-  name: my-app
-  flow: delivery-flow          # delivery-flow | frontend-flow | backend-flow | mobile-flow
+`default` is the shipped 10-stage delivery (the old v5). Per-step playbooks live in `.openflow/workflow-rules/default/` — edit `frontend-plan.md` / `frontend-build.md` for PrimeVue (or whatever stack). Those files are copied once; `init --force` does not overwrite your edits.
 
-intake:
-  provider: jira               # jira | linear | github | mcp | file | manual | none
-
-repos:
-  frontend: ../web
-  backend: ../api
-  context: ../context-docs
-  test: ../e2e
-
-context_role: context
-
-rules:
-  discover: true
-  packs:
-    frontend:
-      - .openflow/rules/frontend.md
-    backend:
-      - ../api/AGENTS.md
-```
+Own workflow: add `.openflow/flows/v6.yml` (or a file under `built-in-flows/`), set `workflow='v6'`, and either add `.openflow/workflow-rules/v6/<step>.md` or set `use: default` on a step to reuse the default playbook. Re-run `openflow init --force` to get `/openflow-start-v6`.
 
 Check what the engine sees:
 
 ```bash
 openflow flows
+openflow dirs
 openflow rules
 ```
 
-> [!NOTE]
-> Do not re-run `init` to change the flow. Pick a flow per work item with `openflow start … --flow frontend-flow`. Use `--force` only when you intend to overwrite `openflow.yml`.
+Drop per-role craft rules in `.openflow/rules/frontend.md` (and backend, …). Drop per-step stack notes in `.openflow/workflow-rules/default/`.
 
 ---
 
@@ -214,32 +191,19 @@ The general rule: **the CLI is the source of truth for state; the markdown is wh
 
 ## Usage
 
-1. Initialize once (`openflow init`) and fill in `openflow.yml`.
-2. Start a work item:
-
-   ```bash
-   openflow start PROD-5100 --title "Shift assignment" \
-     --sub frontend=PROD-5102 --sub backend=PROD-5103 \
-     --sub context=PROD-5101 --sub test=PROD-5104
-   ```
-
-3. In the agent, run `/openflow-run` (or `openflow next` then do that stage).
-4. Review the artifacts. Approve:
-
-   ```bash
-   openflow approve
-   ```
-
-   or `/openflow-approve`.
-5. Repeat until `openflow status` shows every stage complete.
-6. Close out:
+1. Initialize once (`openflow init`) and fill in `openflow.md`.
+2. Start a work item in chat: `/openflow-start-default prod-5790-trip-accept`
+   (or `openflow start prod-5790-trip-accept`). Start does the first stage.
+3. Review the artifacts. Approve: `/openflow-approve` (that also does the **next** stage).
+4. Repeat until `openflow status` shows every stage complete.
+5. Close out:
 
    ```bash
    openflow check
    openflow archive PROD-5100
    ```
 
-The developer never has to remember the next step. `openflow next` is the next step.
+`/openflow-run` is only if you paused and want to continue the current stage.
 
 ### Where you are
 
@@ -248,7 +212,7 @@ openflow status
 ```
 
 ```text
-── PROD-5100: Shift assignment [active] — flow delivery-flow ──
+── PROD-5100: Shift assignment [active] — flow default ──
   ✓ analyze            Analyze work item
   ✓ frontend-plan      Frontend implementation doc
   ▸ frontend-build     Implement frontend   ← current
@@ -278,10 +242,12 @@ Built-in flows:
 
 | Flow | Use when |
 |---|---|
-| `delivery-flow` | Frontend + backend + integrate + tests + context |
+| `default` | Full delivery (analyze → FE/BE plan+build → tests → handoff → context). Shipped default. |
+| `v6` | Shorter prompt-first variant; steps `use: default` playbooks unless you override |
 | `frontend-flow` | UI-only (test automation optional) |
 | `backend-flow` | Service-only |
-| `mobile-flow` | Client + optional backend (example of a non-web role) |
+| `mobile-flow` | Client + optional backend |
+| `delivery-flow` | Older full-delivery alias-style compose |
 
 Nothing in the engine is React- or Jira-specific. Roles are names in YAML.
 
@@ -291,9 +257,12 @@ Each gated stage **stops**. The agent prepares; you approve. Implementation stag
 
 ## Your rules, not ours
 
-OpenFlow does not ship a house style. Every stage loads **your** engineering rules for that role.
+OpenFlow does not ship a house style. Two places to customize craft:
 
-**Option A — configure paths** in `openflow.yml`:
+1. **Per-step playbooks** — `.openflow/workflow-rules/<flow>/<step>.md` (copied from the package on init). Edit `frontend-plan.md` for PrimeVue, design-system notes, etc.
+2. **Role packs** — `.openflow/rules/frontend.md` (and backend, …) or `AGENTS.md` in the repo.
+
+**Option A — configure paths** in `openflow.yml` (optional; `openflow.md` is enough for most teams):
 
 ```yaml
 rules:
@@ -347,11 +316,7 @@ intake:
 
 No tracker access is a supported setup, not a hard failure. See [examples/intake/](examples/intake/).
 
-**Already have docs** from another agent or a wiki export:
-
-```bash
-openflow adopt frontend-plan --path ../web/docs/PROD-5102/ --note "written elsewhere"
-```
+**Already have docs** — put them in the folder `jira-tasks='…'` in `openflow.md`. `/openflow-start-default prod-5790-trip-accept` adopts them.
 
 The stage is verified, then fingerprinted, so later drift still applies.
 
@@ -399,11 +364,20 @@ Blocked work items cannot be approved.
 
 ```bash
 openflow flows
-cp examples/flows/data-flow.yml .openflow/flows/
-openflow start DATA-42 --flow data-flow
 ```
 
+`workflow='default'` in `openflow.md` is what a new install uses.
+
+To add **v6** (or any name):
+
+1. Copy `built-in-flows/default.yml` to `.openflow/flows/v6.yml` (or add `built-in-flows/v6.yml`) and edit stages.
+2. Either create `.openflow/workflow-rules/v6/<step-key>.md` for steps you want different, **or** keep `use: default` on a step so it loads `workflow-rules/default/<step-key>.md`.
+3. Set `workflow='v6'` in `openflow.md`.
+4. `openflow init --force` so `/openflow-start-v6` exists.
+
 A project file with the same id as a built-in **replaces** it. Compose stage kinds for any roles you invent (`data`, `platform`, `cli`). Schema: [schemas/flow-definition.schema.json](schemas/flow-definition.schema.json). Example: [examples/flows/data-flow.yml](examples/flows/data-flow.yml).
+
+`v5` is still accepted as an alias for `default`.
 
 ---
 
@@ -464,13 +438,14 @@ Moving the ticket to Done in Jira/GitHub stays a human action.
 
 | Command | Purpose |
 |---|---|
-| `openflow init` | Scaffold config, skills, Cursor rule (`--force`, `--flow`, `--name`) |
-| `openflow flows` | List available flows |
-| `openflow start <id>` | Start or resume (`--title`, `--flow`, `--sub role=id`) |
+| `openflow init` | Scaffold `openflow.md` and slash skills (`--force`, `--flow`, `--name`) |
+| `openflow start <id>` | Start (`prod-5790-trip-accept`; `--flow default`) |
+| `openflow cr <role> <id>` | Change request (`frontend` + ticket + `-m`) |
 | `openflow next [id]` | Current stage manifest (`--json` for agents) |
 | `openflow approve [id]` | Pass the gate (`--step`, `-m`) |
 | `openflow status [id]` | Progress, blockers, stale |
 | `openflow rules` | Resolved rule packs (`--role`, `--json`) |
+| `openflow dirs` | Repos and doc folders from `openflow.md` |
 | `openflow drift [id]` | Detect post-approval changes |
 | `openflow check [id]` | Definition of Done |
 | `openflow adopt <step>` | Register external artifacts (`--path`, `--note`) |
@@ -485,13 +460,10 @@ Installed under `.cursor/skills/` (and Claude / Windsurf / Codex when detected):
 
 | Skill | When to use it |
 |---|---|
-| `/openflow-start` | Begin or resume a work item |
-| `/openflow-run` | Execute the current stage, then stop |
-| `/openflow-approve` | Record your approval and advance |
+| `/openflow-start-default` | Start the ticket **and do the first stage** |
+| `/openflow-approve` | You accept; it does the **next** stage |
+| `/openflow-cr-frontend-default` | Change request, then work that stage immediately |
 | `/openflow-status` | Where we are, what is stale |
-| `/openflow-revisit` | Redo a stage after a change |
-| `/openflow-adopt` | Keep existing docs instead of regenerating |
-| `/openflow-rules` | Inspect or author a role’s rule pack |
 | `/openflow-archive` | Close out after DoD passes |
 
 ---
@@ -500,7 +472,8 @@ Installed under `.cursor/skills/` (and Claude / Windsurf / Codex when detected):
 
 | Path | What it is |
 |---|---|
-| `openflow.yml` | Project configuration |
+| `openflow.md` | Workflow, repos, Jira/frontend/backend folders |
+| `.openflow/workflow-rules/<flow>/` | Per-step playbooks (edit; not overwritten by `init --force`) |
 | `openflow/state.json` | Cursor, sub-items, fingerprints, staleness, blockers |
 | `openflow/changes/{ticket}/context.md` | Normalized work item and scope |
 | `openflow/changes/{ticket}/questions.md` | Blocking questions with `[Answer]:` |
@@ -529,7 +502,7 @@ Do not hand-edit `openflow/state.json`.
 
 | Problem | What to do |
 |---|---|
-| `No openflow.yml` | Run `openflow init` in the workspace root |
+| `No openflow.md` | Run `openflow init` in the workspace root |
 | `Flow not found` | `openflow flows` — check id and `.openflow/flows/` |
 | Skills missing in chat | Confirm `.cursor/skills/openflow-start/SKILL.md`; reload the window |
 | Agent ignores the flow | Confirm `.cursor/rules/openflow.mdc` is always-on; start with “Using OpenFlow, …” |
@@ -548,9 +521,10 @@ Do not hand-edit `openflow/state.json`.
 **Commit:**
 
 ```gitignore
-openflow.yml
+openflow.md
 .openflow/rules/
 .openflow/flows/
+.openflow/workflow-rules/
 .cursor/rules/openflow.mdc
 .cursor/skills/openflow-*
 ```
