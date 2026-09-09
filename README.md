@@ -6,7 +6,7 @@ Requires Node.js 20+.
 
 ## Install
 
-Node.js 20+. Anyone installs from GitHub (not npm):
+Node.js 20+:
 
 ```bash
 npm install -g github:Shaon1477/OpenFlow
