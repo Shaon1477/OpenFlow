@@ -56,7 +56,8 @@ that passes review and still does the wrong thing.
 ## 5. Extension opt-ins
 
 Scan the `extensions/*/**/*.opt-in.md` files for an `## Opt-In Prompt` section and
-include each question in `questions.md`, phrased in the user's language.
+ask each one in chat, phrased in the user's language. Record the answers in
+`questions.md`.
 
 After answers are in, record the choices at the analyze gate so they land in state,
 and load the **full** rules file only for extensions that were opted into (drop
@@ -65,10 +66,9 @@ enable one on the user's behalf.
 
 ## 6. Clarifying questions
 
-- Create or append to `openflow/changes/{ticket}/questions.md` unless the work item
-  is genuinely unambiguous.
-- Use `../common/question-format-guide.md`: lettered options, mutually exclusive,
-  always an "Other" option, an `[Answer]:` line per question.
+- Ask in chat unless the work item is genuinely unambiguous. Follow
+  `../common/question-format-guide.md`.
+- Then append the Q&A to `openflow/changes/{ticket}/questions.md`.
 - **Gate**: stop and wait. Do not write final requirements while blocking questions
   are unanswered.
 - Analyze the answers for new ambiguity and ask follow-ups until either everything

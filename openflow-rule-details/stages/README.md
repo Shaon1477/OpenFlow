@@ -36,9 +36,9 @@ ON ENTRY → MAIN WORK → OUTPUT → audit → GATE
 
 ## Two rules that apply to every stage
 
-- **Ask, do not assume.** Any ambiguity that changes behaviour goes into
-  `openflow/changes/{ticket}/questions.md` with an `[Answer]:` line, and the
-  stage waits. See `../common/overconfidence-prevention.md`.
+- **Ask, do not assume.** Any ambiguity that changes behaviour is asked in chat.
+  Wait for the answer, then record it in `openflow/changes/{ticket}/questions.md`.
+  See `../common/question-format-guide.md` and `../common/overconfidence-prevention.md`.
 - **Already-done work is adopted, not redone.** If the artifacts a stage would
   produce already exist (another agent, another team, a wiki export), verify them
   against this protocol and run `openflow adopt <stage>` instead of regenerating.

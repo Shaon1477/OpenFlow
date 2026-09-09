@@ -32,8 +32,8 @@ item, before the code that must satisfy them is finished.
 3. **Go past the happy path**: boundary values, empty and maximum states,
    permissions, concurrency, network failure, and every error the plans mention.
 4. **Ask about the unknowable.** Business rules that decide an expected result and
-   are not written anywhere go into `questions.md` — a guessed expected result is
-   worse than no test case.
+   are not written anywhere are asked in chat, then recorded in `questions.md` — a
+   guessed expected result is worse than no test case.
 5. **Keep them automatable.** The test-automation stage will implement these;
    avoid steps only a human can judge unless the case is deliberately manual.
 

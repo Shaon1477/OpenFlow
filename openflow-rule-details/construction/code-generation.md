@@ -39,7 +39,7 @@ Requirements for the plan:
    guess, never a documentation folder.
 3. The approach names the existing pattern being reused. If nothing comparable
    exists, say so and justify the new pattern against the project rule pack.
-4. Anything ambiguous goes to `questions.md` instead of into the plan as a guess.
+4. Anything ambiguous is asked in chat (then recorded in `questions.md`) instead of guessed into the plan.
 
 **Then stop and let the human read it.** This mini-review is inside the stage; it
 is not the stage's gate.

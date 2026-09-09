@@ -68,7 +68,7 @@ These directives were telling the AI to avoid asking questions rather than encou
 - Create follow-up questions for ANY ambiguities
 
 ### For Follow-up Questions
-- Create separate clarification files when ambiguities are detected
+- Ask follow-up questions in chat when ambiguities are detected
 - Ask specific questions to resolve each ambiguity
 - Don't proceed until ALL unclear responses are clarified
 - Be thorough - better to over-clarify than under-clarify

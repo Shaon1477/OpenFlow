@@ -51,8 +51,8 @@ Templates: `../../templates/artifacts/`.
    checkable. No `TBD` on anything blocking.
 6. **Cross-check.** Every task traces to a spec; the design contradicts neither
    `context.md` nor the upstream plan; the rule pack's constraints are satisfied.
-7. **Questions.** Unresolved product decisions go to `questions.md`, not into a
-   guess buried in the design.
+7. **Questions.** Unresolved product decisions are asked in chat, then recorded
+   in `questions.md` — not guessed into the design.
 
 ---
 

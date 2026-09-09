@@ -143,6 +143,6 @@ Moving the work item to Done in your tracker stays your action.
 1. One stage per turn; no jumping ahead.
 2. No code before its plan is approved.
 3. It never approves itself.
-4. Ambiguity goes into `questions.md` and the stage waits.
+4. Ambiguity is asked in chat; answers are recorded in `questions.md`.
 5. It writes only inside the stage's declared repos and artifact paths.
 6. `sync-context` cannot be skipped to finish faster.

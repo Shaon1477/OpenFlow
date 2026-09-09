@@ -4,8 +4,9 @@
 project's own vocabulary. The project rule pack for the role decides *how*
 something is built; this file makes sure you know *what* must be built.
 
-Anything you cannot answer from the work item, the code, or the rule pack goes to
-`questions.md`. A guessed business rule is the most expensive kind of mistake.
+Anything you cannot answer from the work item, the code, or the rule pack is asked
+in chat, then recorded in `questions.md`. A guessed business rule is the most
+expensive kind of mistake.
 
 ---
 
@@ -61,5 +62,5 @@ Anything you cannot answer from the work item, the code, or the rule pack goes t
 ## Output
 
 Answers land in `design.md` (approach, structure, contract detail, data and state)
-and in `specs/*.md` as requirements with scenarios. Unresolved items stay visible
-in `questions.md` — never resolved silently in your head.
+and in `specs/*.md` as requirements with scenarios. Unresolved items are asked in
+chat and recorded in `questions.md` — never resolved silently in your head.

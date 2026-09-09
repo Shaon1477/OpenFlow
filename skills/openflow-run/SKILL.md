@@ -53,8 +53,10 @@ openflow approve --step <key>   # re-baseline that stage
 ## 4. Do the work
 
 Follow the stage protocol. Write only inside `artifacts` and the listed repos.
-Put blocking questions in `openflow/changes/<ticket>/questions.md` with
-`[Answer]:` lines and wait — do not guess business rules.
+Ask blocking questions **in the chat** (short multiple-choice batch, always
+include Other). Wait for the reply. Then write the Q&A into
+`openflow/changes/<ticket>/questions.md` so later stages can read it. Do not
+guess business rules, and do not send the user to edit a file unless they ask.
 
 ## 5. Stop at the gate
 

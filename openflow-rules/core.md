@@ -154,8 +154,8 @@ Skills: `/openflow-start`, `/openflow-run`, `/openflow-approve`, `/openflow-stat
 2. **No code before its plan is approved.** Implementation stages follow
    `construction/code-generation.md`: numbered plan → human read → execute.
 3. **Never self-approve.** Only the human, via `openflow approve`.
-4. **Ask instead of assuming.** Blocking ambiguity goes into `questions.md` and the
-   stage waits.
+4. **Ask instead of assuming.** Blocking questions are asked **in chat**. Wait
+   for the answer, then record it in `questions.md`. Do not guess.
 5. **Write only where told.** The manifest's repos and artifact paths, nothing else.
 6. **Changes propagate.** After any hand edit, `openflow drift`; resolve stale
    stages before continuing.

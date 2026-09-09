@@ -47,8 +47,8 @@ a misconfiguration early.
 - Obey the rule packs for craft decisions; obey the protocol for process decisions.
 - Implementation stages additionally follow `../construction/code-generation.md`:
   numbered plan, human read, then execute.
-- Blocking ambiguity goes to `openflow/changes/{ticket}/questions.md` with
-  `[Answer]:` lines, and the stage waits.
+- Blocking questions are asked in chat (see `../common/question-format-guide.md`).
+  Wait for answers, then record them in `openflow/changes/{ticket}/questions.md`.
 
 ## Phase 3 — OUTPUT
 

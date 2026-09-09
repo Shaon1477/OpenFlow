@@ -70,8 +70,8 @@ branches silently unless the project rules say to.
 ### 6. Ambiguity
 
 Anything that would change the result and is not answered by the work item, the
-code, or the project rules goes into `questions.md` with `[Answer]:` lines. Do
-not finish this stage with open blocking questions.
+code, or the project rules is asked **in chat**. Wait for the answer, then record
+it in `questions.md`. Do not finish this stage with open blocking questions.
 
 ---
 

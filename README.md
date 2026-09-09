@@ -518,7 +518,7 @@ Do not hand-edit `openflow/state.json`.
 - **Your craft, our process.** Engineering conventions come from your rule packs.
 - **One stage per turn.** The agent never jumps ahead.
 - **Human in the loop.** Gated stages wait for `openflow approve`.
-- **Ask in files.** Ambiguity goes to `questions.md`, not a buried chat guess.
+- **Ask in chat.** Ambiguity is asked in the conversation; answers are recorded in `questions.md`.
 - **Changes propagate.** Drift marks dependents stale; archive will not ignore it.
 - **Done includes docs.** `sync-context` is not optional; DoD gates archive.
 - **Agnostic.** Any agent, any tracker, any stack.

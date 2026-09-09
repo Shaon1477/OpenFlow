@@ -22,7 +22,7 @@ presents; it never approves.
 - **Artifacts**: paths, as written
 - **Decisions**: one line each, with the reason
 - **Verification**: for stages with `verify: true`, all three dimensions
-- **Open questions**: none, or a link to `questions.md`
+- **Open questions**: none remaining (asked in chat and recorded in `questions.md`)
 - **Risks**: what might be wrong or incomplete
 - **Next action**: `openflow approve`, or `openflow block "reason"`
 

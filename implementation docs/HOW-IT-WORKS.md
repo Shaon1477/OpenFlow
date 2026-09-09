@@ -289,7 +289,7 @@ They are **reference**, not runtime. You can delete those sibling folders.
 | From AI-DLC | In OpenFlow |
 |---|---|
 | Human gate every phase | `openflow approve` |
-| Questions in files | `questions.md` + `[Answer]:` |
+| Questions in chat (recorded in files) | ask in conversation, write `questions.md` |
 | Adaptive depth | `depth-levels.md` |
 | Plan then code | `construction/code-generation.md` |
 | Opt-in extensions | `extensions/` |
